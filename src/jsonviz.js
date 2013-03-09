@@ -1,4 +1,3 @@
-
 /*
  * JSONViz
  * @author Prakhar  Birla
@@ -19,7 +18,7 @@
 	 * @param  Object/Array obj   Item to scan for data structures
 	 * @return instanceof self
 	 */
-	var Structure = function(obj, opts) {
+	var StructureIndexer = function(obj, opts) {
 		this.length = 0;
 		this.index_obj = [];
 		this.index_ary = {};
@@ -32,7 +31,7 @@
 	/**
 	 * Index the object, only 1 level deep
 	 */
-	Structure.prototype.createIndex = function (obj) {
+	StructureIndexer.prototype.createIndex = function (obj) {
 		var data;
 		_.each(obj, function (o) {
 			/*
@@ -55,8 +54,10 @@
 				//get only the keys
 				data = _.keys(o);
 
-				var data_len = data.length,
-					data_len_thresh = data_len * (1 - this.options.threshold),
+				var data_len = data.length;
+				if(data_len === 0) return;
+
+				var	data_len_thresh = data_len * (1 - this.options.threshold),
 					diff, exact_match = false;
 
 				//get a list of matching indexes sorted by their match with data i.e. object's keys 
@@ -112,18 +113,26 @@
 	 * @param  float ratio_ary Range from 0.0 to 1.0, higher is more lenient
 	 * @return object           Eligible structs
 	 */
-	Structure.prototype.getEligible = function (ratio_obj, ratio_ary) {
+	StructureIndexer.prototype.getEligible = function (ratio_obj, ratio_ary) {
 		//min length of a datastrucure must be 5
 		if(this.length < 5) return false;
 		if(_.isUndefined(ratio_obj)) ratio_obj = 1;
 		if(_.isUndefined(ratio_ary)) ratio_ary = 1;
-		var threshold = ratio_obj * this.length, eligible;
+
+		var threshold = ratio_obj * this.length,
+			eligible;
+
 		this.index_obj = _.sortBy(this.index_obj, function (o) {
+			//sort the object index by count desc
 			return -(o.count + o.data.length);
 		});
+
 		eligible = _.filter(this.index_obj, function (o) {
+			//filter the index by threshold to find the eligible
 			return (o.count >= threshold);
 		});
+
+		//return if eligible are found
 		if(!_.isEmpty(eligible)) {
 			eligible = {
 				data: eligible,
@@ -136,19 +145,18 @@
 
 		eligible = _.chain(this.index_ary)
 					.map(function (o, k) {
-						console.log("o:thres:k",o, threshold, k);
+						//map the array index to count 
 						return (o >= threshold) ? k : -1;
 					})
 					.filter(function(v) {
+						//filter the index by threshold to find the eligible
 						return v >= 0;
 					})
 					.value();
 
 		console.log('elig',eligible);
-		// eligible = _.filter(this.index_ary, function (o) {
-		// 	return (o >= threshold);
-		// });
 
+		//return if found
 		if(!_.isEmpty(eligible)) {
 			eligible = {
 				data: eligible,
@@ -157,12 +165,10 @@
 			return eligible;
 		}
 
-		console.log(null);
-
 		return false;
 	};
 
-	Structure.prototype.getIndex = function (type) {
+	StructureIndexer.prototype.getIndex = function (type) {
 		if(type === 1) { //object
 			return this.index_obj;
 		} else if(type === 2) { //array
@@ -170,72 +176,89 @@
 		}
 	};
 
-	var StructureFactory = function (root) {
-		this.root = root;
-	};
+	/**
+	 * Singleton class to analyze objects using StructureIndexer
+	 * @type {Object}
+	 */
+	var StructureAnalyzer = {
+		analyze : function (object, levels, path) {
+			if(_.isUndefined(levels)) levels = 1;
 
-	StructureFactory.prototype.analyze = function (levels, alt_start_path) {
-		var start = this.root;
+			return this._analyze(object, levels, path || '$');
+		},
+		_analyze : function (obj, levels, path) {
 
-		// do {
-		// 	if(_.isUndefined(alt_start_path)) break;
+			var ds = new StructureIndexer(obj), //create index
+				elig = ds.getEligible(4/7, 4/7), //filter from index
+				is_ary = _.isArray(obj),
+				tmp;
+			// console.log(arguments, ds.getIndex(1), ds.getIndex(2));
 
-		// 	start = jsonPath(start, )
-		// }
-
-		return this._analyze(start, levels, '$');
-	};
-
-	StructureFactory.prototype._analyze = function (obj, levels, path) {
-			var ds = new Structure(obj);
-			var elig = ds.getEligible(4/7, 4/7);
-			console.log(arguments, ds.getIndex(1), ds.getIndex(2));
-			var tmp, is_ary = _.isArray(obj);
-			if(_.isUndefined(path)) path = "$";
-			if(elig === false) {
+			if(_.isUndefined(path)) path = "$"; //default jsonPath
+			if(elig === false) { //if no eligible found, look deeper
 				levels--;
-				if(levels <= 0) {
+				if(levels <= 0) { //make sure it's allowed
 					return false;
 				}
+
 				elig = [];
 
-				_.each(obj, function (o,k) {
-					tmp = this._analyze(o, levels, path + (is_ary ? '[' + k + ']' : '.' + k));
+				_.each(obj, function (o,k) { //call self for each child, maintining jsonPath
+					tmp = this._analyze(o, levels, path + '[' + (is_ary ?  k  : "'" + k + "'") + ']');
 					if(tmp !== false) {
 						elig.push(tmp);
 					}
 				}, this);
+
 				if(elig.length === 0) {
 					elig = false;
-				} else {
+				} else { //flatten the deep array due to recursion
 					elig = _.flatten(elig);
 				}
-			} else {
+			} else { //found eligible
 				var is_key_ary = (elig.type === 2);
-				path += '.';
-				// path += (is_ary ? '[*]' : '.*');
+
+				//maintain jsonPath
+				// path += '.';
+				path += (is_ary ? '[*]' : '.*');
+
 				_.each(elig.data, function(s) {
-					console.log("s$",s);
 					s.paths = _.map(s.data, function(v) {
 						return path + (is_key_ary ? '' : '.' + v);
 					});
 				});
-				elig.root_path = path;
-				console.log(elig);
-				// var paths = _.map(elig.data, function (k) {
-				// 	return path + (is_ary ? '[*]' : '.*') + (is_key_ary ? '' : '.' + k);
-				// });
-				// elig.paths = paths;
 
+				elig.root_path = path;
 			}
 			return elig;
-		};
+		}
+	};
 
-	w.JSONViz = {
+	//frequently used constants
+	var jpPath = {"resultType":"PATH"}/*,
+		jpValue = {"resultType":"VALUE"}*/;
+
+
+	/**
+	 * JSONViz
+	 * @type {Object}
+	 */
+	var JSONViz = {
 		_options:{},
+		_templates:{
+			htmlTable: {
+				new_obj_vert_ds: _.template("<% if(!_.isEmpty(children)) { %><table class=\"table table-bordered\"><%= children %></table><% } %>"),
+				new_obj_vert: _.template("<% if(!_.isEmpty(children)) { %><tr><td class=\"span2\"><strong><abbr title=\"<%= path %>\"><%= info %></abbr></strong></td><%= children %></tr><% } %>"),
+				new_obj_horz: _.template("<p class=\"muted\" onclick=\"$(this).next().toggle()\"><%= info1 %></p><% if(!_.isEmpty(children)) { %><table class=\"table table-bordered\"><%= children %></table><% } %>"),
+				new_property_horz: _.template("<tr><td class=\"span1\"><strong><abbr title=\"<%= path %>\"><%= info %></abbr></strong></td><td class=\"span11\"><%= value %></td></tr>"),
+				new_property_vert: _.template("<td><%= value %></td>"),
+				headers_vert: _.template("<tr><% _.each(headers, function(v) { %><th><%= v %></th><% }); %></tr>")
+			}
+		},
 		parse: function (json_string) {
 			//TODO: add validator
 			// console.log('Input data:', json_string);
+			
 			this._parsed = undefined;
 			try {
 				this._parsed = JSON.parse(json_string);
@@ -247,25 +270,222 @@
 					throw e;
 				}
 			}
-
-
-			// var structures = this.getDataStructures(this._parsed, 3);
-			var structF = new StructureFactory(this._parsed),
-				structures = structF.analyze(3);
-			if(!_.isArray(structures)) structures = [structures];
-
-			console.log("DS found:",structures);
-			_.each(structures, function(s) {
-				_.each(s.data, function (q) {
-					_.each(q.paths, function (p) {
-						console.log("Path:", p, "Values:", jsonPath(this._parsed, p));
-					}, this);
-				}, this);
-			}, this);
 		},
 		setOptions: function (opts) {
-			
+			this._options = _.extend(this._options, opts || {});
+			this._options.analyze = !_.isUndefined(this._options.headers) && this._options.headers === "auto" ? true : false;
+			return;
+		},
+		render: function (path, type) {
+			var root = this._parsed;
+			if(!_.isUndefined(path) && path !== "$") {
+				root = jsonPath(root, path);
+				if(_.isArray(root) && root.length === 1) {
+					root = root[0];
+				}
+			} else {
+				path = "$";
+			}
+			var result;
+
+			switch(type) {
+				case 'htmlTable':
+					result = this._htmlTableRender(root, path);
+					break;
+				default:
+				case 'simpleText':
+					result = this._simpleTextRender(root, path, "");
+					break;
+			}
+			// console.log("Final:",result);
+			this._renderOutput = result;
+			return result;
+		},
+		initTemplates: function() {
+			// this._templates = ;
+		},
+		_htmlTableRender: function (root, path, key, is_ds) {
+			var	out = "",
+				renderData = {info:"",path:path},
+				args = arguments;
+
+			if(!_.isUndefined(key)) {
+				renderData.info = key;
+			}
+			if(_.isUndefined(is_ds)) {
+				is_ds = 0;
+			}
+
+			if(_.isObject(root)) {
+				var is_ary = _.isArray(root),
+					p_prefix = path + "[" + (!is_ary ? "'" : ""),
+					p_suffix = (!is_ary ? "'" : "") + "]",
+					count = 0,
+					child_is_ds = 0;
+
+				if(this._options.analyze) {
+					var structures = StructureAnalyzer.analyze(root, 1, path);
+
+					if(!_.isArray(structures)) structures = [structures];
+
+					if(!_.isEmpty(structures) && structures[0] !== false) {
+						console.log("DS found:",structures, root);
+						child_is_ds = 2;
+						var head = [];
+						_.each(structures, function(s) {
+							if(_.isArray(s.data) && !_.isObject(s.data[0])) {
+								head = _.range(s.data);
+								console.log("Header array:", head);
+								return;
+							} else {
+								head = s.data[0].data;
+							}
+						}, this);
+						head = _.union(['key'],head);
+						out = this._templates.htmlTable.headers_vert({headers:head});
+					}
+				}
+
+				if(child_is_ds === 0) {
+					child_is_ds = is_ds - 1;
+					if(child_is_ds < 0) child_is_ds = 0;
+				}
+
+				_.each(root, function (v, k) {
+					var a = this._htmlTableRender(v, p_prefix + k + p_suffix, k, child_is_ds);
+					// console.log(a);
+					out += a;
+					count++;
+				}, this);
+
+				// if(child_is_ds === 2 && ) {
+				// 	is_ds = 0;
+				// }
+
+				renderData.children = out;
+				renderData.info1 = (is_ary ? "Array" : "Object") + "[" + count + "]" + (this._options["showPath"] ? " @ " + path : "");
+				if(is_ds > 0) {
+					if(child_is_ds === 2 || is_ds === 1) {
+						out = this._templates.htmlTable.new_obj_vert_ds(renderData);
+					} else {
+						out = this._templates.htmlTable.new_obj_vert(renderData);
+					}
+				} else {
+					out = this._templates.htmlTable.new_obj_horz(renderData);
+				}
+
+				//if a key is defined, render as a property
+				if(!_.isUndefined(key)) {
+					if(key === 'pivot') console.log(false, "ASDASDASD", args);
+					renderData.value = out;
+					if(is_ds) {
+						if(is_ds == 1) {
+							out = this._templates.htmlTable.new_property_vert(renderData);
+						}
+					} else {
+						out = this._templates.htmlTable.new_property_horz(renderData);
+					}
+				}
+			} else {
+				renderData.info += (this._options["showPath"] ? " @ " + path : "");
+				renderData.value = root + "";
+				if(is_ds) {
+					out = this._templates.htmlTable.new_property_vert(renderData);
+				} else {
+					out = this._templates.htmlTable.new_property_horz(renderData);
+				}
+			}
+
+			return out;
+		},
+		_simpleTextRender: function (root, path, prefix, key) {
+			var	out = "";
+
+			if(_.isObject(root)) {
+				var is_ary = _.isArray(root),
+					p_prefix = path + "[" + (!is_ary ? "'" : ""),
+					p_suffix = (!is_ary ? "'" : "") + "]",
+					count = 0,
+					child_prefix = prefix + "\t";
+
+				if(this._options.analyze) {
+					var structures = StructureAnalyzer.analyze(root);
+
+					if(!_.isArray(structures)) structures = [structures];
+
+					console.log("DS found:",structures, root);
+				}
+
+				_.each(root, function (v, k) {
+					out += this._simpleTextRender(v, p_prefix + k + p_suffix, child_prefix, k);
+					count++;
+				}, this);
+
+				if(!_.isUndefined(key)) prefix += key + " @ ";
+				if(is_ary) {
+					out = prefix + "Array[" + count + "]" + (this._options["showPath"] ? " @ " + path : "") + "\n" + out;
+				} else {
+					out = prefix + "Object[" + count + "]" + (this._options["showPath"] ? " @ " + path : "") + "\n" + out;
+				}
+
+			} else {
+				if(!_.isUndefined(key)) prefix += key + " @ ";
+				if(_.isFunction(root)) {
+					out = prefix + "Function = " + root + "" + (this._options["showPath"] ? " @ " + path : "");
+				} else {
+					out = prefix + "Value = " + root + "" + (this._options["showPath"] ? " @ " + path : "");
+				}
+				out += "\n";
+			}
+
+			return out;
+		},
+		_jpRender: function (path, prefix) {
+			if(_.isUndefined(path)) path="$";
+			if(_.isUndefined(prefix)) prefix="";
+
+			var root = this._parsed;
+			if(path !== "$") {
+				root = jsonPath(this._parsed, path);
+				if(_.isArray(root) && root.length === 1) {
+					root = root[0];
+				}
+			}
+
+			var	paths = jsonPath(root, '$.*', jpPath),
+				out;
+
+			// if(root === false)  throw new Error("Root is empty");
+			// else console.log(root);
+
+			if(paths !== false) {
+				if(_.isArray(root)) {
+					// console.log("Array", root, paths);
+					out = prefix + "Array[" + paths.length + "]";
+				} else if(_.isObject(root)) {
+					// console.log("Object", root, paths);
+					out = prefix + "Object[" + paths.length + "]";
+				}
+				out += "\n";
+				_.each(paths, function (p) {
+					out += this._jpRender(path + p.substring(1), prefix + "\t");
+				}, this);
+			} else {
+				if(_.isFunction(root)) {
+					// console.log("Function", root, paths);
+					out = prefix + "Function = " + root;
+				} else {
+					// console.log("Value", root, paths);
+					out = prefix + "Value = " + root;
+				}
+				out += "\n";
+			}
+			// console.log(out);
+			return out;
 		}
 
 	};
+
+	//bind JSONViz to window
+	w["JSONViz"] = JSONViz;
 }(window));
