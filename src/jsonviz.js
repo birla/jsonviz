@@ -33,7 +33,7 @@
 	 */
 	StructureIndexer.prototype.createIndex = function (obj) {
 		var data;
-		_.each(obj, function (o) {
+		_.every(obj, function (o) {
 			/*
 				Index arrays and objects in a different way because
 				object can have named keys while array key can only be
@@ -55,7 +55,7 @@
 				data = _.keys(o);
 
 				var data_len = data.length;
-				if(data_len === 0) return;
+				if(data_len === 0) return true;
 
 				var	data_len_thresh = data_len * (1 - this.options.threshold),
 					diff, exact_match = false;
@@ -103,7 +103,10 @@
 				}
 				this.length++;
 			}
+			if(this.length > 1000) return false;
+
 			//ignore everything else
+			return true;
 		}, this);
 	};
 
@@ -304,8 +307,8 @@
 		initTemplates: function() {
 			// this._templates = ;
 		},
-		_htmlTableRender: function (root, path, key, is_ds) {
-			var	out = "",
+		_htmlTableRender: function (root, path, key, is_ds, headers) {
+			var	out = [],
 				renderData = {info:"",path:path},
 				args = arguments;
 
@@ -321,7 +324,9 @@
 					p_prefix = path + "[" + (!is_ary ? "'" : ""),
 					p_suffix = (!is_ary ? "'" : "") + "]",
 					count = 0,
-					child_is_ds = 0;
+					child_is_ds = 0,
+					child_keys = [],
+					child_keys_union = [];
 
 				if(this._options.analyze) {
 					var structures = StructureAnalyzer.analyze(root, 1, path);
@@ -331,72 +336,90 @@
 					if(!_.isEmpty(structures) && structures[0] !== false) {
 						console.log("DS found:",structures, root);
 						child_is_ds = 2;
-						var head = [];
-						_.each(structures, function(s) {
+						var child_headers = [];
+						_.every(structures, function(s) {
 							if(_.isArray(s.data) && !_.isObject(s.data[0])) {
-								head = _.range(s.data);
-								console.log("Header array:", head);
-								return;
+								child_headers = _.range(s.data);
+								console.log("Header array:", child_headers);
+								return false;
 							} else {
-								head = s.data[0].data;
+								child_headers = s.data[0].data;
+								console.log("Header obj:", child_headers);
+								alert(child_headers.join());
+								return false;
 							}
 						}, this);
-						head = _.union(['key'],head);
-						out = this._templates.htmlTable.headers_vert({headers:head});
+						out.push(this._templates.htmlTable.headers_vert({headers:_.union(['key'],child_headers)}));
 					}
 				}
 
-				if(child_is_ds === 0) {
+				if(child_is_ds === 0 && is_ds !== 0) {
 					child_is_ds = is_ds - 1;
-					if(child_is_ds < 0) child_is_ds = 0;
 				}
 
-				_.each(root, function (v, k) {
-					var a = this._htmlTableRender(v, p_prefix + k + p_suffix, k, child_is_ds);
-					// console.log(a);
-					out += a;
+				if(child_is_ds == 1) {
+					if((is_ary && headers.length !== root.length)) {
+						child_is_ds = 0;
+						console.log("Force child no DS", "ARRAY", root, headers);
+					} else if(!is_ary) {
+						var keys = _.keys(root),
+							intersection = _.intersection(keys, headers);
+
+						if(intersection.length !== keys.length) {
+							child_is_ds = 0;
+							console.log("Force child no DS", "OBJ", root, headers);
+						}
+					}
+				}
+
+				_.each(root, function (value, key) {
+					// if(!_.isArray(value) && _.isObject(value)) {
+					// 	child_keys = _.keys(value);
+					// 	child_keys_union = _.union(child_keys, child_headers).length;
+					// 	if((child_keys.length === child_keys_union && child_headers.length === child_keys_union))
+					// }
+					out.push(this._htmlTableRender(value, p_prefix + key + p_suffix, key, child_is_ds, child_headers));
 					count++;
 				}, this);
-
-				// if(child_is_ds === 2 && ) {
-				// 	is_ds = 0;
-				// }
-
-				renderData.children = out;
+				renderData.children = out.join('');
+				out = [];
 				renderData.info1 = (is_ary ? "Array" : "Object") + "[" + count + "]" + (this._options["showPath"] ? " @ " + path : "");
+				// console.log(renderData);
 				if(is_ds > 0) {
 					if(child_is_ds === 2 || is_ds === 1) {
-						out = this._templates.htmlTable.new_obj_vert_ds(renderData);
+						out.push(this._templates.htmlTable.new_obj_vert_ds(renderData));
 					} else {
-						out = this._templates.htmlTable.new_obj_vert(renderData);
+						out.push(this._templates.htmlTable.new_obj_vert(renderData));
 					}
 				} else {
-					out = this._templates.htmlTable.new_obj_horz(renderData);
+					out.push(this._templates.htmlTable.new_obj_horz(renderData));
 				}
 
 				//if a key is defined, render as a property
 				if(!_.isUndefined(key)) {
-					if(key === 'pivot') console.log(false, "ASDASDASD", args);
-					renderData.value = out;
+					// if(key === 'pivot') console.log(false, "ASDASDASD", args);
+					renderData.value = out.join('');
 					if(is_ds) {
 						if(is_ds == 1) {
-							out = this._templates.htmlTable.new_property_vert(renderData);
+							out = [];
+							out.push(this._templates.htmlTable.new_property_vert(renderData));
 						}
 					} else {
-						out = this._templates.htmlTable.new_property_horz(renderData);
+						out = [];
+						out.push(this._templates.htmlTable.new_property_horz(renderData));
 					}
 				}
 			} else {
 				renderData.info += (this._options["showPath"] ? " @ " + path : "");
 				renderData.value = root + "";
 				if(is_ds) {
-					out = this._templates.htmlTable.new_property_vert(renderData);
+					out.push(this._templates.htmlTable.new_property_vert(renderData));
 				} else {
-					out = this._templates.htmlTable.new_property_horz(renderData);
+					out.push(this._templates.htmlTable.new_property_horz(renderData));
 				}
 			}
 
-			return out;
+			return out.join('');
 		},
 		_simpleTextRender: function (root, path, prefix, key) {
 			var	out = "";
