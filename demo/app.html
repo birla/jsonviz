@@ -72,8 +72,8 @@
 							<legend>Settings</legend>
 							<label for="headers_btn">Headers</label>
 							<div id="headers_btn" class="btn-group" data-toggle="buttons-radio">
-								<button type="button" class="btn btn-primary disabled " data-set="auto">Auto</button>
-								<button type="button" class="btn btn-primary active" data-set='fixed'>Fixed</button>
+								<button type="button" class="btn btn-primary active" data-set="auto">Auto</button>
+								<button type="button" class="btn btn-primary " data-set='fixed'>Fixed</button>
 							</div>
 							<label for="whitespace_btn">Preserve Whitespace</label>
 							<button id="whitespace_btn" type="button" class="btn btn-primary" data-toggle="button">Yes</button>
@@ -2538,9 +2538,21 @@
 
 					</span>
 	
+							<label for="json_headers">JSON Headers:</label>
+					<span class="row-fluid">
+						<textarea id="json_headers" rows="10" columns="50" class="span12">
+              {
+              "cols": {
+              "city":"$['facet_counts']['facet_pivot']['listing_city,listing_area'][*]['value']",
+              "count":"$['facet_counts']['facet_pivot']['listing_city,listing_area'][*]['count']"
+              }
+            }
+								</textarea>
+					</span>
+
 					<span class="row">
 
-						<button id="viz_btn" type="button" class="btn btn-primary" onclick="JSONViz.parse($('#raw_json').val()); $('#row_out').html(JSONViz.render('$', 'htmlTable'));">Visualize</button>
+						<button id="viz_btn" type="button" class="btn btn-primary">Visualize</button>
 						<p id="down_btn" class="">Download</p>
 					</span>
 

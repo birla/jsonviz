@@ -241,6 +241,84 @@
 				elig.root_path = path;
 			}
 			return elig;
+		},
+		jpLCS: function (strings) {
+			if(!_.isArray(strings)) return false;
+			strings[0] = StructureAnalyzer.jpNormalize(strings[0]);
+
+			var max_len = strings[0].length,
+				index = 0,
+				current_string = null,
+				total = strings.length,
+				comp_string = [],
+				comp_paths = [];
+
+			for (var i = total - 1; i > 0; i--) {
+				strings[i] = StructureAnalyzer.jpNormalize(strings[i]);
+				if(max_len < strings[i].length) {
+					max_len = strings[i].length;
+					index = i;
+				}
+			}
+
+			for (i = total - 1; i >= 0; i--) {
+				if(i === index) {
+					current_string = strings[i];
+				} else {
+					comp_string.push(strings[i]);
+				}
+			}
+
+			for (i = total - 2; i >= 0; i--) {
+				if(i === index) {
+					current_string = strings[i];
+				} else {
+					comp_string.push(strings[i]);
+				}
+			}
+
+			console.log("Normalized paths:", strings, comp_string);
+
+			for (i = max_len; i >= 0;) {
+				if(_.every(comp_string, function(s) {
+						return (s.substring(0, i) === current_string);
+					})
+				) {
+					return StructureAnalyzer.jpDenormalize(current_string.replace(/;$/,""));
+					//.replace(/((\[?\*\]?)|\.\.)$/,"");
+				}
+				current_string = current_string.substring(0, --i);
+			}
+
+			return false;
+		},
+		jpNormalize: function(expr) {
+			var subx = [];
+			return expr.replace(/[\['](\??\(.*?\))[\]']/g, function($0,$1){return "[#"+(subx.push($1)-1)+"]";})
+				.replace(/'?\.'?|\['?/g, ";")
+				.replace(/;;;|;;/g, ";..;")
+				.replace(/;$|'?\]|'$/g, "")
+				.replace(/#([0-9]+)/g, function($0,$1){return subx[$1];})
+				.replace(/^\$;/,"");
+		},
+		jpDenormalize: function(expr) {
+			var result = null,
+				tokens = expr.split(';'),
+				token = null;
+			for (var i = tokens.length - 1; i >= 0; i--) {
+				token = tokens[i];
+
+				if(token == '..') {
+					continue;
+				} else if(_.isNumber(token) || token == '*') {
+					token = '[' + token + ']';
+				} else {
+					token = '[\'' + token + '\']';
+				}
+
+				tokens[i] = token;
+			}
+			return (['$'].concat(tokens)).join('');
 		}
 	};
 
@@ -284,7 +362,41 @@
 		setOptions: function (opts) {
 			this._options = _.extend(this._options, opts || {});
 			this._options.analyze = !_.isUndefined(this._options.headers) && this._options.headers === "auto" ? true : false;
+			this._options.fixed = !_.isUndefined(this._options.headers) && this._options.headers === "fixed" ? true : false;
 			return;
+		},
+		renderUsingHeaders: function (headers) {
+			var _headers = _.extend({
+					'cols': null,
+					'cols-to-ignore': null
+				}, headers),
+				rootPath,
+				headerPaths,
+				root;
+
+			if(_.isObject(_headers.cols) && !_.isArray(_headers.cols)) {
+				headerPaths = _.values(_headers.cols);
+			}
+
+			rootPath = StructureAnalyzer.jpLCS(headerPaths);
+
+			if(rootPath === false) {
+				return;
+			}
+
+			console.log("LCS", rootPath);
+
+			root = jsonPath(this._parsed, rootPath.replace(/(\[|\.)?\*(\]|\.)?$/,""));
+
+			if(root.length > 1) {
+				return;
+			}
+
+			root = root[0];
+
+			console.log(root);
+
+			
 		},
 		render: function (path, type) {
 			var root = this._parsed;
@@ -307,8 +419,6 @@
 					result = this._simpleTextRender(root, path, "");
 					break;
 			}
-			// console.log("Final:",result);
-			this._renderOutput = result;
 			return result;
 		},
 		initTemplates: function() {
