@@ -244,17 +244,17 @@
 		},
 		jpLCS: function (strings) {
 			if(!_.isArray(strings)) return false;
-			strings[0] = StructureAnalyzer.jpNormalize(strings[0]);
+			strings[0] = StructureAnalyzer.jpNormalize(strings[0]).split(';');
 
 			var max_len = strings[0].length,
 				index = 0,
 				current_string = null,
 				total = strings.length,
 				comp_string = [],
-				comp_paths = [];
+				comp_paths = {"lcs":false};
 
 			for (var i = total - 1; i > 0; i--) {
-				strings[i] = StructureAnalyzer.jpNormalize(strings[i]);
+				strings[i] = StructureAnalyzer.jpNormalize(strings[i]).split(';');
 				if(max_len < strings[i].length) {
 					max_len = strings[i].length;
 					index = i;
@@ -263,34 +263,33 @@
 
 			for (i = total - 1; i >= 0; i--) {
 				if(i === index) {
-					current_string = strings[i];
+					current_string = _.toArray(strings[i]);
 				} else {
 					comp_string.push(strings[i]);
 				}
 			}
 
-			for (i = total - 2; i >= 0; i--) {
-				if(i === index) {
-					current_string = strings[i];
-				} else {
-					comp_string.push(strings[i]);
-				}
-			}
+			console.log("Normalized paths:", strings);
 
-			console.log("Normalized paths:", strings, comp_string);
-
-			for (i = max_len; i >= 0;) {
+			for (i = max_len; i > 0; i--) {
 				if(_.every(comp_string, function(s) {
-						return (s.substring(0, i) === current_string);
+						return (_.first(s, i).join() == current_string.join());
 					})
 				) {
-					return StructureAnalyzer.jpDenormalize(current_string.replace(/;$/,""));
+					comp_paths.lcs = StructureAnalyzer.jpDenormalize(current_string.join(';').replace(/;$/,""));
+					break;
 					//.replace(/((\[?\*\]?)|\.\.)$/,"");
 				}
-				current_string = current_string.substring(0, --i);
+				current_string.pop();
 			}
 
-			return false;
+			comp_paths.left = [];
+
+			for (var j = 0; j < total; j++) {
+				comp_paths.left.push(StructureAnalyzer.jpDenormalize(_.rest(strings[j], i).join(';').replace(/;$/,"")));
+			}
+
+			return comp_paths;
 		},
 		jpNormalize: function(expr) {
 			var subx = [];
@@ -372,21 +371,31 @@
 				}, headers),
 				rootPath,
 				headerPaths,
-				root;
+				headerNames,
+				headerCount,
+				root, newRoot = [],
+				result;
 
 			if(_.isObject(_headers.cols) && !_.isArray(_headers.cols)) {
 				headerPaths = _.values(_headers.cols);
+				headerNames = _.keys(_headers.cols);
+			} else {
+				headerPaths = _.toArray(_headers.cols);
+				headerNames = _.toArray(_headers.cols);
 			}
+
+			headerCount = headerPaths.length;
 
 			rootPath = StructureAnalyzer.jpLCS(headerPaths);
 
-			if(rootPath === false) {
+			if(rootPath.lcs === false) {
 				return;
 			}
 
-			console.log("LCS", rootPath);
+			console.log("LCS", rootPath.lcs);
+			console.log("Left", rootPath.left);
 
-			root = jsonPath(this._parsed, rootPath.replace(/(\[|\.)?\*(\]|\.)?$/,""));
+			root = jsonPath(this._parsed, rootPath.lcs.replace(/(\[|\.)?\*(\]|\.)?$/,""));
 
 			if(root.length > 1) {
 				return;
@@ -396,7 +405,21 @@
 
 			console.log(root);
 
-			
+			_.each(root, function(v, k) {
+				var row = {};
+
+				for (var i = 0; i < headerCount; i++) {
+					row[headerNames[i]] = jsonPath(v, rootPath.left[i]);
+				}
+
+				newRoot.push(row);
+			}, this);
+
+
+			this._options.analyze = true;
+			result = this._htmlTableRender(newRoot, rootPath.lcs);
+
+			return result;
 		},
 		render: function (path, type) {
 			var root = this._parsed;
