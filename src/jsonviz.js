@@ -22,6 +22,7 @@
 		this.length = 0;
 		this.index_obj = [];
 		this.index_ary = {};
+		this.non_obj_length = 0;
 		this.options = _.extend({
 			threshold: 0
 		}, opts || {});
@@ -102,7 +103,12 @@
 					});
 				}
 				this.length++;
+			} else {
+				this.non_obj_length++;
+				//no more index creation required
+				return false;
 			}
+
 			if(this.length > 1000) return false;
 
 			//ignore everything else
@@ -117,6 +123,7 @@
 	 * @return object           Eligible structs
 	 */
 	StructureIndexer.prototype.getEligible = function (ratio_obj, ratio_ary) {
+		if(this.non_obj_length) return false;
 		//min length of a datastrucure must be 5
 		if(this.length < 5) return false;
 		if(_.isUndefined(ratio_obj)) ratio_obj = 1;
@@ -250,10 +257,10 @@
 		_options:{},
 		_templates:{
 			htmlTable: {
-				new_obj_vert_ds: _.template("<% if(!_.isEmpty(children)) { %><table class=\"table table-bordered\"><%= children %></table><% } %>"),
+				new_obj_vert_ds: _.template("<% if(!_.isEmpty(children)) { %><p class=\"muted hand\" onclick=\"$(this).next().toggle()\"><%= info1 %></p><table class=\"table table-bordered\"><%= children %></table><% } %>"),
 				new_obj_vert: _.template("<% if(!_.isEmpty(children)) { %><tr><td class=\"span2\"><strong><abbr title=\"<%= path %>\"><%= info %></abbr></strong></td><%= children %></tr><% } %>"),
-				new_obj_horz: _.template("<p class=\"muted\" onclick=\"$(this).next().toggle()\"><%= info1 %></p><% if(!_.isEmpty(children)) { %><table class=\"table table-bordered\"><%= children %></table><% } %>"),
-				new_property_horz: _.template("<tr><td class=\"span1\"><strong><abbr title=\"<%= path %>\"><%= info %></abbr></strong></td><td class=\"span11\"><%= value %></td></tr>"),
+				new_obj_horz: _.template("<p class=\"muted hand\" onclick=\"$(this).next().toggle()\"><%= info1 %></p><% if(!_.isEmpty(children)) { %><table class=\"table table-bordered\"><%= children %></table><% } %>"),
+				new_property_horz: _.template("<tr><td class=\"span1\"><strong><abbr title=\"<%= path %>\"><%= info %></abbr></strong></td><td class=\"span11\" <%= attr %>><%= value %></td></tr>"),
 				new_property_vert: _.template("<td><%= value %></td>"),
 				headers_vert: _.template("<tr><% _.each(headers, function(v) { %><th><%= v %></th><% }); %></tr>")
 			}
@@ -309,7 +316,7 @@
 		},
 		_htmlTableRender: function (root, path, key, is_ds, headers) {
 			var	out = [],
-				renderData = {info:"",path:path},
+				renderData = {info:"",path:path,attr:''},
 				args = arguments;
 
 			if(!_.isUndefined(key)) {
@@ -345,7 +352,6 @@
 							} else {
 								child_headers = s.data[0].data;
 								console.log("Header obj:", child_headers);
-								alert(child_headers.join());
 								return false;
 							}
 						}, this);
@@ -365,8 +371,9 @@
 						var keys = _.keys(root),
 							intersection = _.intersection(keys, headers);
 
-						if(intersection.length !== keys.length) {
+						if(intersection.length !== headers.length) {
 							child_is_ds = 0;
+							is_ds = 0;
 							console.log("Force child no DS", "OBJ", root, headers);
 						}
 					}
@@ -397,7 +404,6 @@
 
 				//if a key is defined, render as a property
 				if(!_.isUndefined(key)) {
-					// if(key === 'pivot') console.log(false, "ASDASDASD", args);
 					renderData.value = out.join('');
 					if(is_ds) {
 						if(is_ds == 1) {
@@ -405,6 +411,9 @@
 							out.push(this._templates.htmlTable.new_property_vert(renderData));
 						}
 					} else {
+						if(headers && !is_ary) {
+							renderData.attr = 'colspan="' + headers.length + '"';
+						}
 						out = [];
 						out.push(this._templates.htmlTable.new_property_horz(renderData));
 					}
