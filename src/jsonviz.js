@@ -249,6 +249,7 @@
 			var max_len = strings[0].length,
 				index = 0,
 				current_string = null,
+				current_string_joined = null,
 				total = strings.length,
 				comp_string = [],
 				comp_paths = {"lcs":false};
@@ -272,8 +273,9 @@
 			console.log("Normalized paths:", strings);
 
 			for (i = max_len; i > 0; i--) {
+				current_string_joined = current_string.join();
 				if(_.every(comp_string, function(s) {
-						return (_.first(s, i).join() == current_string.join());
+						return (_.first(s, i).join() == current_string_joined);
 					})
 				) {
 					comp_paths.lcs = StructureAnalyzer.jpDenormalize(current_string.join(';').replace(/;$/,""));
@@ -292,12 +294,12 @@
 			return comp_paths;
 		},
 		jpNormalize: function(expr) {
-			var subx = [];
-			return expr.replace(/[\['](\??\(.*?\))[\]']/g, function($0,$1){return "[#"+(subx.push($1)-1)+"]";})
+			var sub_exp = [];
+			return expr.replace(/[\['](\??\(.*?\))[\]']/g, function($0,$1){return "[#"+(sub_exp.push($1)-1)+"]";})
 				.replace(/'?\.'?|\['?/g, ";")
 				.replace(/;;;|;;/g, ";..;")
 				.replace(/;$|'?\]|'$/g, "")
-				.replace(/#([0-9]+)/g, function($0,$1){return subx[$1];})
+				.replace(/#([0-9]+)/g, function($0,$1){return sub_exp[$1];})
 				.replace(/^\$;/,"");
 		},
 		jpDenormalize: function(expr) {
@@ -307,9 +309,9 @@
 			for (var i = tokens.length - 1; i >= 0; i--) {
 				token = tokens[i];
 
-				if(token == '..') {
+				if(token === '..' || token === '') {
 					continue;
-				} else if(_.isNumber(token) || token == '*') {
+				} else if(_.isNumber(token) || token === '*') {
 					token = '[' + token + ']';
 				} else {
 					token = '[\'' + token + '\']';
@@ -345,7 +347,7 @@
 		parse: function (json_string) {
 			//TODO: add validator
 			// console.log('Input data:', json_string);
-			
+
 			this._parsed = undefined;
 			try {
 				this._parsed = JSON.parse(json_string);
@@ -452,31 +454,41 @@
 				renderData = {info:"",path:path,attr:''},
 				args = arguments;
 
+			// key i.e. the name of property / array index
 			if(!_.isUndefined(key)) {
 				renderData.info = key;
 			}
+
+			// is_ds = is data structure
 			if(_.isUndefined(is_ds)) {
 				is_ds = 0;
 			}
 
+			// is object
 			if(_.isObject(root)) {
-				var is_ary = _.isArray(root),
-					p_prefix = path + "[" + (!is_ary ? "'" : ""),
+				var is_ary = _.isArray(root), // is the current element an array
+					p_prefix = path + "[" + (!is_ary ? "'" : ""), // maintain jsonPath
 					p_suffix = (!is_ary ? "'" : "") + "]",
-					count = 0,
-					child_is_ds = 0,
-					child_keys = [],
+					count = 0, // no of children
+					child_is_ds = 0, // child is_ds
+					child_headers = [],
+					child_keys = [], // keys for childs headers
 					child_keys_union = [];
 
+				// look for data structures
 				if(this._options.analyze) {
+					// analyze the root, 1 level deep, assuming path as $
 					var structures = StructureAnalyzer.analyze(root, 1, path);
 
 					if(!_.isArray(structures)) structures = [structures];
 
+					// found a ds
 					if(!_.isEmpty(structures) && structures[0] !== false) {
 						console.log("DS found:",structures, root);
+						// each value is iterated twice i.e. one is the child
+						// and next is each of it's children 
 						child_is_ds = 2;
-						var child_headers = [];
+						// get an eligible header
 						_.every(structures, function(s) {
 							if(_.isArray(s.data) && !_.isObject(s.data[0])) {
 								child_headers = _.range(s.data);
@@ -488,14 +500,19 @@
 								return false;
 							}
 						}, this);
+						// render the header as a ds
 						out.push(this._templates.htmlTable.headers_vert({headers:_.union(['key'],child_headers)}));
 					}
 				}
 
+				// set the child header value, only if it's 0, to is_ds - 1
+				// this decerements the is_ds value for each child
 				if(child_is_ds === 0 && is_ds !== 0) {
 					child_is_ds = is_ds - 1;
 				}
 
+				// if values are next, but the headers of this doesn't
+				// match then force a normal render
 				if(child_is_ds == 1) {
 					if((is_ary && headers.length !== root.length)) {
 						child_is_ds = 0;
@@ -512,6 +529,7 @@
 					}
 				}
 
+				// render each child
 				_.each(root, function (value, key) {
 					// if(!_.isArray(value) && _.isObject(value)) {
 					// 	child_keys = _.keys(value);
@@ -521,10 +539,17 @@
 					out.push(this._htmlTableRender(value, p_prefix + key + p_suffix, key, child_is_ds, child_headers));
 					count++;
 				}, this);
+
+				// get all child outputs together
 				renderData.children = out.join('');
+
+				// clear queue
 				out = [];
+
+				// header for array/object (with toggle func)
 				renderData.info1 = (is_ary ? "Array" : "Object") + "[" + count + "]" + (this._options["showPath"] ? " @ " + path : "");
-				// console.log(renderData);
+				
+				// render as required i.e. based on is_ds and child_is_ds
 				if(is_ds > 0) {
 					if(child_is_ds === 2 || is_ds === 1) {
 						out.push(this._templates.htmlTable.new_obj_vert_ds(renderData));
@@ -535,25 +560,30 @@
 					out.push(this._templates.htmlTable.new_obj_horz(renderData));
 				}
 
-				//if a key is defined, render as a property
+				// if a key is defined, render as a property
 				if(!_.isUndefined(key)) {
 					renderData.value = out.join('');
 					if(is_ds) {
 						if(is_ds == 1) {
+							// clear queue
 							out = [];
 							out.push(this._templates.htmlTable.new_property_vert(renderData));
 						}
 					} else {
-						if(headers && !is_ary) {
+						// if is part of a ds, but forced render is applied then colspan
+						if(headers) {
 							renderData.attr = 'colspan="' + headers.length + '"';
 						}
+						// clear queue
 						out = [];
 						out.push(this._templates.htmlTable.new_property_horz(renderData));
 					}
 				}
-			} else {
+			} else { // is not an object, presumably a value
 				renderData.info += (this._options["showPath"] ? " @ " + path : "");
 				renderData.value = root + "";
+
+				// render based on is_ds
 				if(is_ds) {
 					out.push(this._templates.htmlTable.new_property_vert(renderData));
 				} else {
@@ -561,6 +591,7 @@
 				}
 			}
 
+			// join and return all output
 			return out.join('');
 		},
 		_simpleTextRender: function (root, path, prefix, key) {
