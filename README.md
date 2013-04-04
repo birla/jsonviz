@@ -12,7 +12,7 @@ Will be distributed under BSD-3 Clause license.
 
 * Show JSON as a HTML table or CSV
 * Runs offline
-* Download CSV / HTML without server side interaction (using ...)
+* Download CSV / HTML without server side interaction (using Downloadify)
 * Embed in your code, see sample
 * Open source
 * Commercial safe license!

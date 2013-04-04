@@ -20,7 +20,7 @@ $('#viz_btn').click(function() {
 	JSONViz.parse($('#raw_json').val());
 	if(JSONViz._options.fixed) {
 		$('#row_out').html(
-			JSONViz.renderUsingHeaders(
+			JSONViz.fixedHeaders(
 				JSON.parse($('#json_headers').val())
 			)
 		);

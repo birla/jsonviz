@@ -214,7 +214,8 @@
 				elig = [];
 
 				_.each(obj, function (o,k) { //call self for each child, maintining jsonPath
-					tmp = this._analyze(o, levels, path + '[' + (is_ary ?  k  : "'" + k + "'") + ']');
+					tmp =
+						this._analyze(o, levels, path + '[' + (is_ary ?  k  : "'" + k + "'") + ']');
 					if(tmp !== false) {
 						elig.push(tmp);
 					}
@@ -242,7 +243,7 @@
 			}
 			return elig;
 		},
-		jpLCS: function (strings) {
+/*		jpLCS: function (strings) {
 			if(!_.isArray(strings)) return false;
 			strings[0] = StructureAnalyzer.jpNormalize(strings[0]).split(';');
 
@@ -278,7 +279,8 @@
 						return (_.first(s, i).join() == current_string_joined);
 					})
 				) {
-					comp_paths.lcs = StructureAnalyzer.jpDenormalize(current_string.join(';').replace(/;$/,""));
+					comp_paths.lcs =
+						StructureAnalyzer.jpDenormalize(current_string.join(';').replace(/;$/,""));
 					break;
 					//.replace(/((\[?\*\]?)|\.\.)$/,"");
 				}
@@ -288,23 +290,89 @@
 			comp_paths.left = [];
 
 			for (var j = 0; j < total; j++) {
-				comp_paths.left.push(StructureAnalyzer.jpDenormalize(_.rest(strings[j], i).join(';').replace(/;$/,"")));
+				comp_paths.left.push(
+					StructureAnalyzer.jpDenormalize(
+						_.rest(strings[j], i).join(';').replace(/;$/,"")
+					)
+				);
+			}
+
+			return comp_paths;
+		},*/
+		jpLCS: function (strings, is_normalized) {
+			//TODO: func is not stable as key value pair must maintined instead of an array
+
+			if(!_.isArray(strings)) return false;
+
+			if(!is_normalized)
+				strings[0] = StructureAnalyzer.jpNormalize(strings[0]).split(';');
+
+			var max_len = strings[0].length,
+				index = 0,
+				current_string = null,
+				current_string_joined = null,
+				total = strings.length,
+				comp_string = [],
+				comp_paths = {"lcs":false};
+
+			for (var i = total - 1; i > 0; i--) {
+				if(!is_normalized)
+					strings[i] = StructureAnalyzer.jpNormalize(strings[i]).split(';');
+
+				if(max_len < strings[i].length) {
+					max_len = strings[i].length;
+					index = i;
+				}
+			}
+
+			for (i = total - 1; i >= 0; i--) {
+				if(i === index) {
+					current_string = strings[i];
+				} else {
+					comp_string.push(strings[i]);
+				}
+			}
+
+			//find LCS at stars
+			current_string = this.jpSplitAtStar(current_string)[0];
+			max_len = current_string.length;
+
+			for (i = max_len; i > 0; i--) {
+				current_string_joined = current_string.join();
+				if(_.every(comp_string, function(s) {
+						return (_.first(s, i).join() == current_string_joined);
+					})
+				) {
+					comp_paths.lcs = current_string;
+					break;
+					//.replace(/((\[?\*\]?)|\.\.)$/,"");
+					//StructureAnalyzer.jpDenormalize(current_string.join(';').replace(/;$/,""));
+				}
+				current_string.pop();
+			}
+
+			comp_paths.left = [];
+
+			for (var j = 0; j < total; j++) {
+				comp_paths.left.push(_.rest(strings[j], i));
 			}
 
 			return comp_paths;
 		},
 		jpNormalize: function(expr) {
-			var sub_exp = [];
-			return expr.replace(/[\['](\??\(.*?\))[\]']/g, function($0,$1){return "[#"+(sub_exp.push($1)-1)+"]";})
+			var subx = [];
+			return expr
+				.replace(/[\['](\??\(.*?\))[\]']/g,
+					function($0,$1){return "[#"+(subx.push($1)-1)+"]";})
 				.replace(/'?\.'?|\['?/g, ";")
 				.replace(/;;;|;;/g, ";..;")
 				.replace(/;$|'?\]|'$/g, "")
-				.replace(/#([0-9]+)/g, function($0,$1){return sub_exp[$1];})
+				.replace(/#([0-9]+)/g, function($0,$1){return subx[$1];})
 				.replace(/^\$;/,"");
 		},
-		jpDenormalize: function(expr) {
+		jpDenormalize: function(expr, is_array) {
 			var result = null,
-				tokens = expr.split(';'),
+				tokens = !is_array ? expr.split(';') : _.toArray(expr),
 				token = null;
 			for (var i = tokens.length - 1; i >= 0; i--) {
 				token = tokens[i];
@@ -320,6 +388,45 @@
 				tokens[i] = token;
 			}
 			return (['$'].concat(tokens)).join('');
+		},
+		jpIsStar: function(v) {
+			return v == '*';
+		},
+		jpFindStar: function(ary) {
+			var result = false;
+			_.every(ary, function(v, k) {
+				if(StructureAnalyzer.jpIsStar(v)) {
+					result = k;
+					return false;
+				}
+				return true;
+			});
+			return result;
+		},
+		jpSplitAtStar: function(ary) {
+			var result = [[],[]], push_index = 0;
+			_.each(ary, function(v, k) {
+				result[push_index].push(v);
+				if(StructureAnalyzer.jpIsStar(v)) {
+					push_index = 1;
+				}
+			});
+			return result;
+		},
+		jpFilterStarred: function (headers) {
+			var result = {
+				"exec": {},
+				"starred": {}
+			};
+			_.each(headers, function (v, k) {
+				if(this.jpFindStar(v) === false) {
+					result["exec"][k] = v;
+				} else {
+					result["starred"][k] = v;
+				}
+			}, this);
+
+			return result;
 		}
 	};
 
@@ -349,6 +456,8 @@
 			// console.log('Input data:', json_string);
 
 			this._parsed = undefined;
+
+			// try to parse the given string
 			try {
 				this._parsed = JSON.parse(json_string);
 			} catch (e) {
@@ -362,8 +471,10 @@
 		},
 		setOptions: function (opts) {
 			this._options = _.extend(this._options, opts || {});
-			this._options.analyze = !_.isUndefined(this._options.headers) && this._options.headers === "auto" ? true : false;
-			this._options.fixed = !_.isUndefined(this._options.headers) && this._options.headers === "fixed" ? true : false;
+			this._options.analyze = !_.isUndefined(this._options.headers) &&
+				this._options.headers === "auto" ? true : false;
+			this._options.fixed = !_.isUndefined(this._options.headers) &&
+				this._options.headers === "fixed" ? true : false;
 			return;
 		},
 		renderUsingHeaders: function (headers) {
@@ -411,12 +522,11 @@
 				var row = {};
 
 				for (var i = 0; i < headerCount; i++) {
-					row[headerNames[i]] = jsonPath(v, rootPath.left[i]);
+					row[headerNames[i]] = jsonPath(v, rootPath.left[i])[0];
 				}
 
 				newRoot.push(row);
 			}, this);
-
 
 			this._options.analyze = true;
 			result = this._htmlTableRender(newRoot, rootPath.lcs);
@@ -424,8 +534,11 @@
 			return result;
 		},
 		render: function (path, type) {
-			var root = this._parsed;
-			if(!_.isUndefined(path) && path !== "$") {
+			var root = this._parsed,
+				result;
+
+			// evaluate the path given, if not $ as the root
+			if(!_.isEmpty(path) && path !== "$") {
 				root = jsonPath(root, path);
 				if(_.isArray(root) && root.length === 1) {
 					root = root[0];
@@ -433,9 +546,12 @@
 			} else {
 				path = "$";
 			}
-			var result;
 
+			// render based on type
 			switch(type) {
+				case 'jsonPath':
+					result = this._jpRender(path, "");
+					break;
 				case 'htmlTable':
 					result = this._htmlTableRender(root, path);
 					break;
@@ -449,6 +565,143 @@
 		initTemplates: function() {
 			// this._templates = ;
 		},
+		_findFirstStar: function(array) {
+			var result = false;
+			_.every(array, function(v, k) {
+				if(v == '*') {
+					result = k;
+					return false;
+				}
+				return true;
+			});
+			return result;
+		},
+		_fixedHeaders: function (root, headers) {
+			var out = [],
+				outNewIndex = 0,
+				childData = null,
+				headerPaths = _.values(headers),
+				headerNames = _.keys(headers),
+				headerCount = headerPaths.length,
+				rootPath = StructureAnalyzer.jpLCS(headerPaths, true),
+				starElem = null,
+				lcs = rootPath.lcs,
+				remainingLcs = null
+				;
+
+			// this should not happen
+			if(lcs === false) {
+				console.log("LCS is false");
+				return out;
+			}
+
+			starElem = StructureAnalyzer.jpFindStar(lcs);
+
+			// this should not happen
+			if(starElem === false) {
+				console.log("starElem is false");
+				return false;
+			}
+
+			// limit the lcs to the first start
+			remainingLcs = (starElem + 1) < lcs.length ? _.last(lcs, starElem + 1) : [];
+			lcs = _.first(lcs, starElem);
+
+			// evaluate the root
+			root = jsonPath(root, StructureAnalyzer.jpDenormalize(lcs, true));
+
+			if(root === false)  {
+				console.log("root is false");
+				return out;
+			}
+
+			// assume only the first as the root
+			root = root[0];
+
+			// put the remainingLcs as a part of the left over paths
+			rootPath.left = _.map(rootPath.left, function(v, k) {
+				return remainingLcs.concat(v);
+			});
+
+			// separate the starred and non-starred paths
+			childData = StructureAnalyzer.jpFilterStarred(rootPath.left);
+
+			// console.log(childData, root, lcs, remainingLcs);
+
+			// associative map, childData.exec to a json path
+			childData.exec = _.chain(childData.exec)
+				.keys()
+				.object(_.map(childData.exec, function(p,k) {
+					return StructureAnalyzer.jpDenormalize(p, true);
+				}))
+				.value();
+
+			// associative map, childData.starred to headerName
+			childData.starred = _.chain(childData.starred)
+				.keys()
+				.map(function (v) {
+					return headerNames[v];
+				})
+				.object(_.values(childData.starred))
+				.value();
+
+			// output rows
+			_.each(root, function (node, k) {
+				// make a new row
+				out[outNewIndex] = {};
+
+				// evaluate each col which can be executed i.e. no-star
+				_.each(childData.exec, function(p,k) {
+					out[outNewIndex][headerNames[k]] = jsonPath(node, p)[0];
+				});
+
+				// evaluate cols which require recursion i.e. starred
+				if(!_.isEmpty(childData.starred)) {
+					var origRow = _.clone(out[outNewIndex--]);
+					_.each(this._fixedHeaders(node, childData.starred), function (r) {
+						//merge each child row with the original row and add to list
+						out[++outNewIndex] = _.chain(origRow)
+											.clone()
+											.extend(r)
+											.value();
+					});
+				}
+				outNewIndex++;
+			}, this);
+
+			return out;
+		},
+		fixedHeaders: function (headers) {
+			var _headers = _.extend({
+					'cols': null,
+					'cols-to-ignore': null
+				}, headers),
+				rootPath,
+				headerPaths,
+				headerNames,
+				headerCount,
+				root,
+				result;
+
+			if(_.isObject(_headers.cols) && !_.isArray(_headers.cols)) {
+				headerPaths = _.values(_headers.cols);
+				headerNames = _.keys(_headers.cols);
+			} else {
+				headerPaths = _.toArray(_headers.cols);
+				headerNames = _.toArray(_headers.cols);
+			}
+
+			headerPaths = _.map(headerPaths, function (v) {
+				return StructureAnalyzer.jpNormalize(v).split(';');
+			});
+
+			root = this._fixedHeaders(this._parsed, _.object(headerNames, headerPaths));
+
+			this._options.analyze = true;
+			result = this._htmlTableRender(root, '$');
+
+			return result;
+		},
 		_htmlTableRender: function (root, path, key, is_ds, headers) {
 			var	out = [],
 				renderData = {info:"",path:path,attr:''},
@@ -459,7 +712,7 @@
 				renderData.info = key;
 			}
 
-			// is_ds = is data structure
+			// is_ds i.e. is data structure
 			if(_.isUndefined(is_ds)) {
 				is_ds = 0;
 			}
@@ -501,7 +754,9 @@
 							}
 						}, this);
 						// render the header as a ds
-						out.push(this._templates.htmlTable.headers_vert({headers:_.union(['key'],child_headers)}));
+						out.push(this._templates.htmlTable.headers_vert(
+							{headers:_.union(['key'],child_headers)}
+						));
 					}
 				}
 
@@ -536,7 +791,13 @@
 					// 	child_keys_union = _.union(child_keys, child_headers).length;
 					// 	if((child_keys.length === child_keys_union && child_headers.length === child_keys_union))
 					// }
-					out.push(this._htmlTableRender(value, p_prefix + key + p_suffix, key, child_is_ds, child_headers));
+					out.push(this._htmlTableRender(
+						value,
+						p_prefix + key + p_suffix,
+						key,
+						child_is_ds,
+						child_headers
+					));
 					count++;
 				}, this);
 
@@ -547,7 +808,8 @@
 				out = [];
 
 				// header for array/object (with toggle func)
-				renderData.info1 = (is_ary ? "Array" : "Object") + "[" + count + "]" + (this._options["showPath"] ? " @ " + path : "");
+				renderData.info1 = (is_ary ? "Array" : "Object") +
+					"[" + count + "]" + (this._options["showPath"] ? " @ " + path : "");
 				
 				// render as required i.e. based on is_ds and child_is_ds
 				if(is_ds > 0) {
@@ -619,17 +881,21 @@
 
 				if(!_.isUndefined(key)) prefix += key + " @ ";
 				if(is_ary) {
-					out = prefix + "Array[" + count + "]" + (this._options["showPath"] ? " @ " + path : "") + "\n" + out;
+					out = prefix + "Array[" + count + "]" +
+						(this._options["showPath"] ? " @ " + path : "") + "\n" + out;
 				} else {
-					out = prefix + "Object[" + count + "]" + (this._options["showPath"] ? " @ " + path : "") + "\n" + out;
+					out = prefix + "Object[" + count + "]" +
+						(this._options["showPath"] ? " @ " + path : "") + "\n" + out;
 				}
 
 			} else {
 				if(!_.isUndefined(key)) prefix += key + " @ ";
 				if(_.isFunction(root)) {
-					out = prefix + "Function = " + root + "" + (this._options["showPath"] ? " @ " + path : "");
+					out = prefix + "Function = " + root + "" +
+						(this._options["showPath"] ? " @ " + path : "");
 				} else {
-					out = prefix + "Value = " + root + "" + (this._options["showPath"] ? " @ " + path : "");
+					out = prefix + "Value = " + root + "" +
+						(this._options["showPath"] ? " @ " + path : "");
 				}
 				out += "\n";
 			}
@@ -637,9 +903,6 @@
 			return out;
 		},
 		_jpRender: function (path, prefix) {
-			if(_.isUndefined(path)) path="$";
-			if(_.isUndefined(prefix)) prefix="";
-
 			var root = this._parsed;
 			if(path !== "$") {
 				root = jsonPath(this._parsed, path);
