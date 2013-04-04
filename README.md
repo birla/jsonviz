@@ -3,12 +3,11 @@ JSONViz (Viz = Visualizer || Wizard)
 
 Written in JavaScript with full support for JSON Paths, heavily relies on underscore.js.
 
-Still under developement
+Still under developement. See a [BETA demo](http://birla.github.com/jsonviz/).
 
 Will be distributed under BSD-3 Clause license.
 
 ### What can it do?
-
 
 * Show JSON as a HTML table or CSV
 * Runs offline
@@ -20,7 +19,7 @@ Will be distributed under BSD-3 Clause license.
 License
 ----
 
-	Copyright (c) 2012, Prakhar Birla, ....
+	Copyright (c) 2013, Prakhar Birla
 	All rights reserved.
 
 	Redistribution and use in source and binary forms, with or without
@@ -30,7 +29,7 @@ License
 	    * Redistributions in binary form must reproduce the above copyright
 	      notice, this list of conditions and the following disclaimer in the
 	      documentation and/or other materials provided with the distribution.
-	    * Neither the name of the <organization> nor the
+	    * Neither the name of the Prakhar Birla nor the
 	      names of its contributors may be used to endorse or promote products
 	      derived from this software without specific prior written permission.
 
