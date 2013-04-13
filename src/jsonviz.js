@@ -377,8 +377,10 @@
 			for (var i = tokens.length - 1; i >= 0; i--) {
 				token = tokens[i];
 
-				if(token === '..' || token === '') {
+				if(token === '') {
 					continue;
+				} else if(token === '..' ) {
+
 				} else if(_.isNumber(token) || token === '*') {
 					token = '[' + token + ']';
 				} else {
@@ -608,15 +610,17 @@
 			lcs = _.first(lcs, starElem);
 
 			// evaluate the root
-			root = jsonPath(root, StructureAnalyzer.jpDenormalize(lcs, true));
+			if(lcs.length > 0) {
+				root = jsonPath(root, StructureAnalyzer.jpDenormalize(lcs, true));
 
-			if(root === false)  {
-				console.log("root is false");
-				return out;
+				if(root === false)  {
+					console.log("root is false");
+					return out;
+				}
+
+				// assume only the first as the root
+				root = root[0];
 			}
-
-			// assume only the first as the root
-			root = root[0];
 
 			// put the remainingLcs as a part of the left over paths
 			rootPath.left = _.map(rootPath.left, function(v, k) {
@@ -646,7 +650,7 @@
 				.value();
 
 			// output rows
-			_.each(root, function (node, k) {
+			_.each(root, function (node, key) {
 				// make a new row
 				out[outNewIndex] = {};
 
@@ -941,6 +945,13 @@
 			}
 			// console.log(out);
 			return out;
+		},
+		getModule: function (name) {
+			if(name === 'StructureIndexer') {
+				return StructureIndexer;
+			} else if(name === 'StructureAnalyzer') {
+				return StructureAnalyzer;
+			}
 		}
 
 	};
