@@ -28,7 +28,7 @@ describe("StructureIndexer", function() {
 			expect(tmp.length).toBe(4);
 		});
 
-		it("found no data structure, due to the min length", function() {
+		it("found no data structure, due to the min length constraint of 5", function() {
 			tmp1 = tmp.getEligible();
 			expect(tmp1).toBe(false);
 		});
@@ -50,10 +50,7 @@ describe("StructureIndexer", function() {
 
 		it("found the correct data structure", function() {
 			tmp1 = tmp.getEligible();
-			//use a weak equality, unline toBe
-			expect(
-					_.isEqual(tmp1.data[0].data, data_simple_table_10_ds)
-				).toBe(true);
+			expect(tmp1.data[0].data).toEqual(data_simple_table_10_ds);
 		});
 	});
 });

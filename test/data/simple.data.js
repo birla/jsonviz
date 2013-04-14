@@ -1,3 +1,28 @@
+/**
+ * PATHS
+ */
+var data_simple_paths_set_1 = [
+  "$['store']['book'][0][1]",
+  "$..['book'][*]",
+  "$[*][*][*]['value'][0]"
+];
+
+var data_simple_paths_set_2 = [
+  "$['store'][1,2][0][1:3]",
+  "$..[(@.length-1)][*]",
+  "$..[*][?(@.value>10)]['value']"
+];
+
+var data_simple_paths_set_3 = [
+  "$..['book'][:2]",
+  "$..['book'][0,1]",
+  "$..['book'][-1:]",
+];
+
+/**
+ * TABLES
+ */
+
 var data_simple_table_4 = [{
   "category": "reference",
   "author": "Nigel Rees",
