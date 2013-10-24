@@ -3,7 +3,7 @@ JSONViz (Viz = Visualizer || Wizard)
 
 Written in JavaScript with full support for JSON Paths, heavily relies on underscore.js.
 
-Still under developement. See a [BETA demo](http://birla.github.com/jsonviz/).
+Still under developement. See a [BETA demo](http://json.bir.la/).
 
 Will be distributed under BSD-3 Clause license.
 
