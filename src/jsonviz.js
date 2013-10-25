@@ -396,7 +396,7 @@
 				new_obj_horz: _.template("<p class=\"muted hand\" onclick=\"$(this).next().toggle()\"><%= info1 %></p><% if(!_.isEmpty(children)) { %><table class=\"table table-condensed table-bordered\"><%= children %></table><% } %>"),
 				new_property_horz: _.template("<tr><td class=\"span1\"><strong><abbr title=\"<%= path %>\"><%= info %></abbr></strong></td><td class=\"span11\" <%= attr %>><%= value %></td></tr>"),
 				new_property_vert: _.template("<td><%= value %></td>"),
-				headers_vert: _.template("<tr><% _.each(headers, function(v) { %><th><%= v %></th><% }); %></tr>")
+				headers_vert: _.template("<tr><th>key</th><% _.each(headers, function(v) { %><th><abbr title=\"<%= v.path %>\"><%= v.info %></abbr></th><% }); %></tr>")
 			}
 		},
 		parse: function (json_string) {
@@ -644,9 +644,16 @@
 							}
 						}, this);
 						// render the header as a ds
-						out.push(this._templates.htmlTable.headers_vert(
-							{headers:_.union(['key'],child_headers)}
-						));
+						out.push(this._templates.htmlTable.headers_vert({
+							headers:  _.map(child_headers, function (value) {
+								return {
+									info: value,
+									path: renderData.path + '[*][' +
+										(typeof value !== 'number'? "'" + value + "'" : value)
+										+ ']'
+								};
+							})
+						}));
 					}
 				}
 
