@@ -7,11 +7,16 @@ version 0.1
 	* CSV Render
 	* JSON Render (beautify)
 	* Left-menu fix
-	* Discuss implication of disallowing `..`
+	* Copy path on hover
+	* Allow to select fixed headers by clicking
+	* Discuss implication of not allowing `..`
 	* Auto-headers detect in the same column across multiple rows ? Is is really needed?
 
 version 0.2
 -----------
-	* Node.js wrapper
+	* Web workers
+	* Keep parallel.js in mind
 
-version test
+version 0.5
+-----------
+	* Node.js wrapper
