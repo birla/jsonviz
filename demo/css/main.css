@@ -9,9 +9,21 @@
 	cursor: pointer;
 }
 
+.fl {
+  float: left;
+}
 
+.fr {
+  float: right;
+}
 
+.mr10 {
+  margin-right: 10px;
+}
 
+.mt10 {
+  margin-top: 10px;
+}
 
 
 

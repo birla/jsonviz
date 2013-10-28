@@ -409,12 +409,12 @@
 			try {
 				this._parsed = JSON.parse(json_string);
 			} catch (e) {
-				if(e instanceof SyntaxError) {
-					console.error("Syntax error in input JSON");
-					return;
-				} else {
+				// if(e instanceof SyntaxError) {
+				// 	console.error("Syntax error in input JSON");
+				// 	return;
+				// } else {
 					throw e;
-				}
+				// }
 			}
 		},
 		setOptions: function (opts) {
@@ -425,9 +425,13 @@
 				this._options.headers === "fixed" ? true : false;
 			return;
 		},
-		render: function (path, type) {
+		render: function (path, type, headers) {
 			var root = this._parsed,
 				result;
+
+			if(this._options.fixed && !_.isEmpty(headers)) {
+				root = this.fixedHeaders(headers);
+			}
 
 			// evaluate the path given, if not $ as the root
 			if(!_.isEmpty(path) && path !== "$") {
@@ -446,6 +450,12 @@
 					break;
 				case 'htmlTable':
 					result = this._htmlTableRender(root, path);
+					break;
+				case 'jsonString':
+					result = JSON.stringify(root, null, '    ');
+					break;
+				case 'csv':
+					result = this._csvRender(root);
 					break;
 				default:
 				case 'simpleText':
@@ -588,9 +598,11 @@
 			root = this._fixedHeaders(this._parsed, _.object(headerNames, headerPaths));
 
 			this._options.analyze = true;
-			result = this._htmlTableRender(root, '$');
 
-			return result;
+			// this._parsed = root;
+			// result = this._htmlTableRender(root, '$');
+
+			return root;
 		},
 		_htmlTableRender: function (root, path, key, is_ds, headers) {
 			var	out = [],

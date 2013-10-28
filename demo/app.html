@@ -60,11 +60,10 @@
 			</div>
 		</div>
 
-		<div class="container-fluid">			<div class="row-fluid">
+		<div class="container-fluid">
+      <div class="row-fluid">
 				<div class="span6 offset3">
-					<h1>JSON Visualizer</h1>
-					<!-- <p>This tool will help you in visualizing raw JSON data in a HTML table or a CSV file. You can download and save both on your local machine. Since this tool is built entirely in JavaScript, you can save the complete page on your local machine to run it later.</p> -->
-					<!-- <p><a class="btn" href="#">Start now &raquo;</a></p> -->
+					<h1>JSONViz</h1>
 				</div>
 			</div>
 			<div class="row-fluid">
@@ -72,23 +71,36 @@
 					<form>
 						<fieldset>
 							<legend>Settings</legend>
-							<label for="headers_btn">Headers</label>
-							<div id="headers_btn" class="btn-group" data-toggle="buttons-radio">
-								<button type="button" class="btn btn-primary active" data-set="auto">Auto</button>
-								<button type="button" class="btn btn-primary " data-set='fixed'>Fixed</button>
-							</div>
-							<label for="whitespace_btn">Preserve Whitespace</label>
-							<button id="whitespace_btn" type="button" class="btn btn-primary" data-toggle="button">Yes</button>
-
+              <p>
+  							<label for="headers_btn">Headers</label>
+  							<div id="headers_btn" class="btn-group" data-toggle="buttons-radio">
+  								<button type="button" class="btn btn-primary active" data-set="auto">Auto</button>
+  								<button type="button" class="btn btn-primary " data-set='fixed'>Fixed</button>
+  							</div>
+              </p>
+              <!-- <p>
+  							<label for="whitespace_btn">Preserve Whitespace</label>
+  							<button id="whitespace_btn" type="button" class="btn btn-primary" data-toggle="button">Yes</button>
+              </p> -->
+              <p>
+                <label for="output_btn">Output</label>
+                <div id="output_btn" class="btn-group" data-toggle="buttons-radio">
+                  <button type="button" title="Can only be viewed" id='output_html_btn' class="btn btn-primary active" data-set='html'>HTML</button>
+                  <button type="button" title="Can only be downloaded" id='output_csv_btn' class="btn btn-primary disabled " data-set='csv'>CSV</button>
+                  <button type="button" title="Can be viewed & downloaded" class="btn btn-primary " data-set='json'>JSON</button>
+                </div>
+              </p>
 							<br/>
 						</fieldset>
 					</form>
 				</div>
 				<div class="span9">
-					<label for="raw_json">JSON:</label>
+          <legend>Input JSON</legend>
+          <button id="input_as_array_toggle_btn" type="button" class="btn btn-info btn-mini fr" data-toggle="button">Consider each line as an array element</button>
+          <button class="hide btn btn-inverse btn-mini fr mr10" id="undo_btn">Undo</button>
+          <br/>
 					<span class="row-fluid">
 						<textarea id="raw_json" rows="10" columns="50" class="span12">
-
 {
   "responseHeader":{
     "status":0,
@@ -8212,19 +8224,37 @@
 
 					</span>
 	
-							<label for="json_headers">JSON Headers:</label>
-					<span class="row-fluid">
+          <span class="row-fluid hide" id='headers_row'>
+            <legend>Headers <i class="icon-question-sign"></i></legend>
+					  <button id="header_display_toggle_btn" type="button" class="btn btn-info btn-mini active fr" data-toggle="button">Show as JSON</button>
+            <br/>
+            <div id="headers_container">
             <textarea id="json_headers" rows="10" columns="50" class="span12">
               {
-              "cols": {
+              "columns": {
               "city":"$['facet_counts']['facet_pivot'][*][?(@.count>500)]['value']",
               "area":"$['facet_counts']['facet_pivot'][*][?(@.count>500)]['pivot'][*]['pivot'][*]['value']",
               "type":"$['facet_counts']['facet_pivot'][*][?(@.count>500)]['pivot'][*]['value']",
               "bed_rooms":"$['facet_counts']['facet_pivot'][*][?(@.count>500)]['pivot'][*]['pivot'][*]['pivot'][?(@.count>10)]['value']",
               "count":"$['facet_counts']['facet_pivot'][*][?(@.count>500)]['pivot'][*]['pivot'][*]['pivot'][?(@.count>10)]['count']"
               }
-            }
-</textarea>
+            }</textarea>
+            </div>
+              <!-- <div class="controls controls-row">
+                <span class="span2">Root path</span>
+                <input type="text" id="root_path" class="span6" placeholder="root path">
+              </div>
+              <label><strong>Columns</strong></label>
+              <div id="header_columns_container">
+                <div class="controls controls-row">
+                  <input type="text" class="span2" placeholder="name">
+                  <input type="text" class="span5" placeholder="path">
+                  <span class="span1"><i class="icon-remove-sign hand"></i></span>
+                </div>
+              </div>
+              <div class="controls">
+                <i class="icon-plus-sign hand"></i>
+              </div> -->
 <!-- 						<textarea id="json_headers" rows="10" columns="50" class="span12">
               {
               "cols": {
@@ -8238,15 +8268,13 @@
 </textarea> -->
 					</span>
 
-					<span class="row">
+					<span class="row-fluid">
 
-						<button id="viz_btn" type="button" class="btn btn-primary">Visualize</button>
-						<p id="down_btn" class="">Download</p>
+						<button id="viz_btn" type="button" class="btn btn-success fl mr10">Visualize</button>
+            <div id="down_btn" class="fl hide">Download</div>
 					</span>
-
-					<span class="row-fluid span12" id="row_out">
-						<textarea id="viz_out" rows="20" columns="50" class="span12"></textarea>
-					</span>
+          <br/>
+					<span class="row-fluid" id="row_out"></span>
 					<!-- <table class="table table-hover">
 						<thead>
 							<tr>
@@ -8278,59 +8306,51 @@
 						</table> -->
 				</div>
 			</div>
+
 			<hr>
 
 			<footer>
 				<!-- <p>&copy; Something official here</p> -->
 			</footer>
 
-		</div> <!-- /container -->		<!-- <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.js"></script> -->
+		</div> <!-- /container -->
+
+    <!-- <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.js"></script> -->
 		<script>window.jQuery || document.write('<script src="js/vendor/jquery-1.9.1.js"><\/script>')</script>
 
 		<script src="js/vendor/bootstrap.min.js"></script>
 
-		<script src="js/plugins.js"></script>
-		<script src="js/main.js"></script>
+    <script type="text/javascript">
+    var modalScreen;
+    modalScreen = modalScreen || (function () {
+        var pleaseWaitDiv = $('<div class="modal hide" id="pleaseWaitDialog" data-backdrop="static" data-keyboard="false"></div>').html('<div class="modal-header"><h2></h2></div><div class="modal-body"><div class="progress progress-striped active"><div class="bar" style="width: 100%;"></div></div></div>');
+        return {
+            show: function(wordToShow) {
+                if(typeof wordToShow === 'undefined') wordToShow = 'Processing';
+                pleaseWaitDiv.find('h2').html(wordToShow + '...');
+                pleaseWaitDiv.modal();
+            },
+            hide: function () {
+                pleaseWaitDiv.modal('hide');
+            },
 
-		<script src="../lib/underscore.js"></script>
-		<script src="../lib/jsonpath.js"></script>
-		<script src="../lib/json2.js"></script>
-		<script src="../lib/downloadify.min.js"></script>
-		<script src="../src/jsonviz.js"></script>
+        };
+    })();
+    modalScreen.show('Loading');
+    </script>
 
-		<script type="text/javascript">
-			JSONViz.setOptions({
-				showPath: false,
-				renderType: 'htmlTable',
-				headers: 'auto'
-			});
+    <script src="../lib/underscore.js"></script>
+    <script src="../lib/jsonpath.js"></script>
+    <script src="../lib/json2.js"></script>
+    <script src="../lib/downloadify.min.js"></script>
+    <script src="../src/jsonviz.js"></script>
 
-			Downloadify.create('down_btn',{
-				filename: function(){
-					return "JSONViz.html";
-				},
-				data: function(){ 
-					return JSONViz._renderOutput;
-				},
-				onComplete: function(){ 
-					alert('Your File Has Been Saved!'); 
-				},
-				onCancel: function(){ 
-					alert('You have cancelled the saving of this file.');
-				},
-				onError: function(){ 
-					alert('You must put something in the File Contents or there will be nothing to save!'); 
-				},
-				swf: '../lib/media/downloadify.swf',
-				downloadImage: 'img/download.png',
-				width: 100,
-				height: 30,
-				transparent: true,
-				append: false
-			});
-		</script>
+    <script src="js/plugins.js"></script>
+    <script src="js/main.js"></script>
 
 		<script>
+      modalScreen.hide();
+
 			// var _gaq=[['_setAccount','UA-XXXXX-X'],['_trackPageview']];
 			// (function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];
 			// g.src=('https:'==location.protocol?'//ssl':'//www')+'.google-analytics.com/ga.js';
