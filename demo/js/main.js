@@ -23,6 +23,7 @@ $(document).ready(function() {
 	var sampleData = {
 		1: 'abs'
 	};
+	var StructureAnalyzer = JSONViz.getModule('StructureAnalyzer');
 
 	localStorageCheck = (localStorage && true);
 
@@ -106,11 +107,13 @@ $(document).ready(function() {
 	}).click();
 
 	headerHtmlTemplates = {
-		layout: _.template("<div class=\"controls controls-row\"> <span class=\"span2\">Root path</span> <input type=\"text\" id=\"root_path\" class=\"span6\" placeholder=\"root path\" <% if(!_.isEmpty(path)) { %>value=\"<%= path %>\"<% } %> > </div>"+
+		layout: _.template("<div class=\"controls controls-row\"> <span class=\"span2\">Root path  <i title=\"Root path is the common path amongst all the columns. Assume each result of this as `$` in the column paths.\" class=\"icon-question-sign\" id=\"root_path_tip\"></i></span>"+
+				" <input type=\"text\" id=\"root_path\" class=\"span6\" placeholder=\"root path\" <% if(!_.isEmpty(path)) { %>value=\"<%= path %>\"<% } %> > "+
+				" <span class=\"span2\"><button id=\"auto_root_btn\" class=\"btn btn-info btn-mini\" >Auto</button></span> </div>"+
 				"<label><strong>Columns</strong></label><div id=\"header_columns_container\"></div>" +
 				"<div class=\"controls\"> <i class=\"icon-plus-sign hand\"></i> </div>"),
-		column_row: _.template("<div class=\"controls controls-row\"><input type=\"text\" class=\"span2\" <% if(!_.isEmpty(name)) { %>value=\"<%= name %>\"<% } %> name=\"columns_name[]\" placeholder=\"name\"><input type=\"text\" class=\"span5\" <% if(!_.isEmpty(path)) { %>value=\"<%= path %>\"<% } %> name=\"columns_path[]\" placeholder=\"path\"><span class=\"span1\"><i class=\"icon-remove-sign hand\"></i></span></div>")
-		// new_obj_vert_ds: _.template("<% if(!_.isEmpty(children)) { %><p class=\"muted hand\" onclick=\"$(this).next().toggle()\"><%= info1 %></p><table class=\"table table-condensed table-bordered\"><%= children %></table><% } %>")
+		column_row: _.template("<div class=\"controls controls-row\"><input type=\"text\" class=\"span2\" <% if(name && !_.isEmpty(name)) { %>value=\"<%= name %>\"<% } %> name=\"columns_name[]\" placeholder=\"name\"><input type=\"text\" class=\"span5\" "+
+				"<% if(path && !_.isEmpty(path)) { %>value=\"<%= path %>\"<% } %> name=\"columns_path[]\" placeholder=\"path\"><span class=\"span1\"><i class=\"icon-remove-sign hand\"></i></span></div>")
 	};
 
 	$('#header_display_toggle_btn').click(function headerDisplayToggleHandler (event) {
@@ -122,14 +125,19 @@ $(document).ready(function() {
 			var target = $('#header_display_toggle_btn');
 			var container = $('#headers_container');
 			if(target.hasClass('active')) {
+				container.find('div.controls i').off();
 				container.empty().html('<textarea id="json_headers" rows="10" columns="50" class="span12"></textarea>');
+				// dump a pretty json into the textarea
 				$('#json_headers').val(JSON.stringify(json_headers, null, '    '));
 			} else {
 				var rows_container;
 				container.empty().html(headerHtmlTemplates.layout({
 					path: (json_headers.root ? json_headers.root : "$")
 				}));
+
 				rows_container = container.find('#header_columns_container');
+
+				// fill in the rows based on json data
 				if(!_.isEmpty(json_headers.columns)) {
 					_.each(json_headers.columns, function columnTraversal (path, name) {
 						rows_container.append($(headerHtmlTemplates.column_row({
@@ -139,21 +147,57 @@ $(document).ready(function() {
 					});
 				} else {
 					rows_container.append($(headerHtmlTemplates.column_row({
-						path: "$"
+						path: ''
 					})));
 				}
-				/*container.find('icon-plus-sign').click(function (event) {
+
+				container.find('#root_path_tip').tooltip();
+
+				container.find('#auto_root_btn').click(function () {
+					// get current headers
+					var json_headers_current = getHeadersFromForm();
+					// convert to internal format
+					json_headers_current = wrapHeadersForJV(json_headers_current);
+					var only_paths = _.values(json_headers_current.cols);
+					var only_names = _.keys(json_headers_current.cols);
+					// find the LCS at first star
+					var lcs = StructureAnalyzer.jpLCS(only_paths);
+					var json_headers_new = {
+						root: false,
+						columns: {}
+					};
+
+					// if LCS is found, update the values in the form
+					if(_.isArray(lcs.lcs)) {
+						json_headers_new.columns = _.object(only_names,_.map(lcs.left, function(value) {
+							return StructureAnalyzer.jpDenormalize(value, true);
+						}));
+						json_headers_new.root = StructureAnalyzer.jpDenormalize(lcs.lcs, true);
+						if(json_headers_new.root !== false) {
+							rows_container.find('.controls-row').each(function domColumnTraverse (key, row) {
+								var name = $(row).find('[name="columns_name[]"]').val();
+								$(row).find('[name="columns_path[]"]').val(json_headers_new.columns[name]);
+							});
+							container.find('#root_path').val(json_headers_new.root);
+						}
+					} else {
+						alert('Couldn\'t find the LCS.');
+					}
+				});
+
+				// bind to the add column button
+				container.find('div.controls i.icon-plus-sign').click(function (event) {
 					rows_container.append($(headerHtmlTemplates.column_row({
-						path: "$"
+						path: ''
 					})));
-					container.find('icon-remove-sign').last().click(removeHandler);
+					container.find('div.controls i.icon-remove-sign').last().click(removeHandler);
 				});
 
 				function removeHandler (event) {
-					console.log(event.target, $(event.target).parent(1));
+					$(event.target).parent().parent().remove();
 				}
-				container.find('icon-remove-sign').click(removeHandler);
-				controls.log(container.find('icon-remove-sign'));*/
+				// bind to the remove column buttons
+				container.find('div.controls i.icon-remove-sign').click(removeHandler);
 			}
 		},0);
 	}).click();
@@ -210,6 +254,15 @@ $(document).ready(function() {
 		$('#undo_btn').hide();
 	});
 
+	function wrapHeadersForJV(headers) {
+		var root_path = headers.root ? headers.root : '$';
+		var headers_final = {cols:{}};
+		_.each(headers.columns, function headerTraversal(value, name) {
+			headers_final.cols[name] = root_path + value.substr(1);
+		});
+		return headers_final;
+	}
+
 	$('#viz_btn').click(function() {
 	    modalScreen.show();
 		$('abbr') && $('abbr').parent().off();
@@ -220,7 +273,6 @@ $(document).ready(function() {
 			var input_as_array_toggle_btn = $('#input_as_array_toggle_btn');
 			var result;
 			var headers;
-			var headers_final;
 			var root_path;
 			var output_param;
 
@@ -254,16 +306,11 @@ $(document).ready(function() {
 			}
 
 			if(JSONViz._options.fixed) {
-				headers = getHeadersFromForm();
-				root_path = headers.root ? headers.root : '$';
-				headers_final = {cols:{}};
-				_.each(headers.columns, function headerTraversal(value, name) {
-					headers_final.cols[name] = root_path + value.substr(1);
-				});
+				headers = wrapHeadersForJV(getHeadersFromForm());
 			}
 
 			try {
-				result = JSONViz.render('$', outputMapping[outputType]['param'], headers_final);
+				result = JSONViz.render('$', outputMapping[outputType]['param'], headers);
 			} catch (e) {
 				alert("Faced error while trying to render. See console for details.\nFix it to continue.");
 				modalScreen.hide();
@@ -329,5 +376,5 @@ $(document).ready(function() {
 		append: false
 	});
 
-
+	$('.bind-tooltip').tooltip();
 });
