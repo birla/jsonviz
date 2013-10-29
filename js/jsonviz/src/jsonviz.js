@@ -243,65 +243,7 @@
 			}
 			return elig;
 		},
-/*		jpLCS: function (strings) {
-			if(!_.isArray(strings)) return false;
-			strings[0] = StructureAnalyzer.jpNormalize(strings[0]).split(';');
-
-			var max_len = strings[0].length,
-				index = 0,
-				current_string = null,
-				current_string_joined = null,
-				total = strings.length,
-				comp_string = [],
-				comp_paths = {"lcs":false};
-
-			for (var i = total - 1; i > 0; i--) {
-				strings[i] = StructureAnalyzer.jpNormalize(strings[i]).split(';');
-				if(max_len < strings[i].length) {
-					max_len = strings[i].length;
-					index = i;
-				}
-			}
-
-			for (i = total - 1; i >= 0; i--) {
-				if(i === index) {
-					current_string = _.toArray(strings[i]);
-				} else {
-					comp_string.push(strings[i]);
-				}
-			}
-
-			console.log("Normalized paths:", strings);
-
-			for (i = max_len; i > 0; i--) {
-				current_string_joined = current_string.join();
-				if(_.every(comp_string, function(s) {
-						return (_.first(s, i).join() == current_string_joined);
-					})
-				) {
-					comp_paths.lcs =
-						StructureAnalyzer.jpDenormalize(current_string.join(';').replace(/;$/,""));
-					break;
-					//.replace(/((\[?\*\]?)|\.\.)$/,"");
-				}
-				current_string.pop();
-			}
-
-			comp_paths.left = [];
-
-			for (var j = 0; j < total; j++) {
-				comp_paths.left.push(
-					StructureAnalyzer.jpDenormalize(
-						_.rest(strings[j], i).join(';').replace(/;$/,"")
-					)
-				);
-			}
-
-			return comp_paths;
-		},*/
 		jpLCS: function (strings, is_normalized) {
-			//TODO: func is not stable as key value pair must maintined instead of an array
-
 			if(!_.isArray(strings)) return false;
 
 			if(!is_normalized)
@@ -333,8 +275,8 @@
 				}
 			}
 
-			//find LCS at stars
-			current_string = this.jpSplitAtStar(current_string)[0];
+			//find LCS at multi elem
+			current_string = this.jpSplitAtMultiElem(current_string)[0];
 			max_len = current_string.length;
 
 			for (i = max_len; i > 0; i--) {
@@ -377,9 +319,12 @@
 			for (var i = tokens.length - 1; i >= 0; i--) {
 				token = tokens[i];
 
-				if(token === '..' || token === '') {
+				if(token === '') {
 					continue;
-				} else if(_.isNumber(token) || token === '*') {
+				} else if(token === '..' ) {
+
+				} else if(token.match(/-?\d+[,:]?\d*$/) || token === '*' ||
+					token[0] === '(' || token[0] === '?') {
 					token = '[' + token + ']';
 				} else {
 					token = '[\'' + token + '\']';
@@ -390,12 +335,15 @@
 			return (['$'].concat(tokens)).join('');
 		},
 		jpIsStar: function(v) {
-			return v == '*';
+			return v === '*';
 		},
-		jpFindStar: function(ary) {
+		jpIsMultiElem: function(v) {
+			return StructureAnalyzer.jpIsStar(v) || v[0] === '?';
+		},
+		jpFindMultiElem: function(ary) {
 			var result = false;
 			_.every(ary, function(v, k) {
-				if(StructureAnalyzer.jpIsStar(v)) {
+				if(StructureAnalyzer.jpIsMultiElem(v)) {
 					result = k;
 					return false;
 				}
@@ -403,26 +351,26 @@
 			});
 			return result;
 		},
-		jpSplitAtStar: function(ary) {
+		jpSplitAtMultiElem: function(ary) {
 			var result = [[],[]], push_index = 0;
 			_.each(ary, function(v, k) {
 				result[push_index].push(v);
-				if(StructureAnalyzer.jpIsStar(v)) {
+				if(StructureAnalyzer.jpIsMultiElem(v)) {
 					push_index = 1;
 				}
 			});
 			return result;
 		},
-		jpFilterStarred: function (headers) {
+		jpFilterMultiElem: function (headers) {
 			var result = {
 				"exec": {},
-				"starred": {}
+				"recursive": {}
 			};
 			_.each(headers, function (v, k) {
-				if(this.jpFindStar(v) === false) {
+				if(this.jpFindMultiElem(v) === false) {
 					result["exec"][k] = v;
 				} else {
-					result["starred"][k] = v;
+					result["recursive"][k] = v;
 				}
 			}, this);
 
@@ -443,12 +391,12 @@
 		_options:{},
 		_templates:{
 			htmlTable: {
-				new_obj_vert_ds: _.template("<% if(!_.isEmpty(children)) { %><p class=\"muted hand\" onclick=\"$(this).next().toggle()\"><%= info1 %></p><table class=\"table table-bordered\"><%= children %></table><% } %>"),
+				new_obj_vert_ds: _.template("<% if(!_.isEmpty(children)) { %><p class=\"muted hand\" onclick=\"$(this).next().toggle()\"><%= info1 %></p><table class=\"table table-condensed table-bordered\"><%= children %></table><% } %>"),
 				new_obj_vert: _.template("<% if(!_.isEmpty(children)) { %><tr><td class=\"span2\"><strong><abbr title=\"<%= path %>\"><%= info %></abbr></strong></td><%= children %></tr><% } %>"),
-				new_obj_horz: _.template("<p class=\"muted hand\" onclick=\"$(this).next().toggle()\"><%= info1 %></p><% if(!_.isEmpty(children)) { %><table class=\"table table-bordered\"><%= children %></table><% } %>"),
+				new_obj_horz: _.template("<p class=\"muted hand\" onclick=\"$(this).next().toggle()\"><%= info1 %></p><% if(!_.isEmpty(children)) { %><table class=\"table table-condensed table-bordered\"><%= children %></table><% } %>"),
 				new_property_horz: _.template("<tr><td class=\"span1\"><strong><abbr title=\"<%= path %>\"><%= info %></abbr></strong></td><td class=\"span11\" <%= attr %>><%= value %></td></tr>"),
 				new_property_vert: _.template("<td><%= value %></td>"),
-				headers_vert: _.template("<tr><% _.each(headers, function(v) { %><th><%= v %></th><% }); %></tr>")
+				headers_vert: _.template("<tr><th>key</th><% _.each(headers, function(v) { %><th><abbr title=\"<%= v.path %>\"><%= v.info %></abbr></th><% }); %></tr>")
 			}
 		},
 		parse: function (json_string) {
@@ -461,12 +409,12 @@
 			try {
 				this._parsed = JSON.parse(json_string);
 			} catch (e) {
-				if(e instanceof SyntaxError) {
-					console.error("Syntax error in input JSON");
-					return;
-				} else {
+				// if(e instanceof SyntaxError) {
+				// 	console.error("Syntax error in input JSON");
+				// 	return;
+				// } else {
 					throw e;
-				}
+				// }
 			}
 		},
 		setOptions: function (opts) {
@@ -477,65 +425,13 @@
 				this._options.headers === "fixed" ? true : false;
 			return;
 		},
-		renderUsingHeaders: function (headers) {
-			var _headers = _.extend({
-					'cols': null,
-					'cols-to-ignore': null
-				}, headers),
-				rootPath,
-				headerPaths,
-				headerNames,
-				headerCount,
-				root, newRoot = [],
-				result;
-
-			if(_.isObject(_headers.cols) && !_.isArray(_headers.cols)) {
-				headerPaths = _.values(_headers.cols);
-				headerNames = _.keys(_headers.cols);
-			} else {
-				headerPaths = _.toArray(_headers.cols);
-				headerNames = _.toArray(_headers.cols);
-			}
-
-			headerCount = headerPaths.length;
-
-			rootPath = StructureAnalyzer.jpLCS(headerPaths);
-
-			if(rootPath.lcs === false) {
-				return;
-			}
-
-			console.log("LCS", rootPath.lcs);
-			console.log("Left", rootPath.left);
-
-			root = jsonPath(this._parsed, rootPath.lcs.replace(/(\[|\.)?\*(\]|\.)?$/,""));
-
-			if(root.length > 1) {
-				return;
-			}
-
-			root = root[0];
-
-			console.log(root);
-
-			_.each(root, function(v, k) {
-				var row = {};
-
-				for (var i = 0; i < headerCount; i++) {
-					row[headerNames[i]] = jsonPath(v, rootPath.left[i])[0];
-				}
-
-				newRoot.push(row);
-			}, this);
-
-			this._options.analyze = true;
-			result = this._htmlTableRender(newRoot, rootPath.lcs);
-
-			return result;
-		},
-		render: function (path, type) {
+		render: function (path, type, headers) {
 			var root = this._parsed,
 				result;
+
+			if(this._options.fixed && !_.isEmpty(headers)) {
+				root = this.fixedHeaders(headers);
+			}
 
 			// evaluate the path given, if not $ as the root
 			if(!_.isEmpty(path) && path !== "$") {
@@ -555,6 +451,12 @@
 				case 'htmlTable':
 					result = this._htmlTableRender(root, path);
 					break;
+				case 'jsonString':
+					result = JSON.stringify(root, null, '    ');
+					break;
+				case 'csv':
+					result = this._csvRender(root, _.keys(headers.cols));
+					break;
 				default:
 				case 'simpleText':
 					result = this._simpleTextRender(root, path, "");
@@ -565,17 +467,6 @@
 		initTemplates: function() {
 			// this._templates = ;
 		},
-		_findFirstStar: function(array) {
-			var result = false;
-			_.every(array, function(v, k) {
-				if(v == '*') {
-					result = k;
-					return false;
-				}
-				return true;
-			});
-			return result;
-		},
 		_fixedHeaders: function (root, headers) {
 			var out = [],
 				outNewIndex = 0,
@@ -584,7 +475,8 @@
 				headerNames = _.keys(headers),
 				headerCount = headerPaths.length,
 				rootPath = StructureAnalyzer.jpLCS(headerPaths, true),
-				starElem = null,
+				multiElem = null,
+				isMultiAStar = false,
 				lcs = rootPath.lcs,
 				remainingLcs = null
 				;
@@ -595,36 +487,46 @@
 				return out;
 			}
 
-			starElem = StructureAnalyzer.jpFindStar(lcs);
+			multiElem = StructureAnalyzer.jpFindMultiElem(lcs);
 
 			// this should not happen
-			if(starElem === false) {
-				console.log("starElem is false");
+			if(multiElem === false) {
+				console.log("multiElem is false");
 				return false;
 			}
 
-			// limit the lcs to the first start
-			remainingLcs = (starElem + 1) < lcs.length ? _.last(lcs, starElem + 1) : [];
-			lcs = _.first(lcs, starElem);
+			// limit the lcs to the first multi elem
+			remainingLcs = (multiElem + 1) < lcs.length ? _.last(lcs, multiElem + 1) : [];
+			isMultiAStar = StructureAnalyzer.jpIsStar(lcs[multiElem]);
 
-			// evaluate the root
-			root = jsonPath(root, StructureAnalyzer.jpDenormalize(lcs, true));
-
-			if(root === false)  {
-				console.log("root is false");
-				return out;
+			if(!isMultiAStar) {
+				console.log(lcs);
 			}
 
-			// assume only the first as the root
-			root = root[0];
+			lcs = _.first(lcs, multiElem + (isMultiAStar ? 0 : 1));
+
+			// evaluate the root
+			if(lcs.length > 0) {
+				root = jsonPath(root, StructureAnalyzer.jpDenormalize(lcs, true));
+
+				if(root === false)  {
+					console.log("root is false");
+					return out;
+				}
+
+				if(isMultiAStar) {
+					// assume only the first as the root
+					root = root[0];
+				}
+			}
 
 			// put the remainingLcs as a part of the left over paths
 			rootPath.left = _.map(rootPath.left, function(v, k) {
 				return remainingLcs.concat(v);
 			});
 
-			// separate the starred and non-starred paths
-			childData = StructureAnalyzer.jpFilterStarred(rootPath.left);
+			// separate the recursive and non-recursive paths
+			childData = StructureAnalyzer.jpFilterMultiElem(rootPath.left);
 
 			// console.log(childData, root, lcs, remainingLcs);
 
@@ -636,29 +538,29 @@
 				}))
 				.value();
 
-			// associative map, childData.starred to headerName
-			childData.starred = _.chain(childData.starred)
+			// associative map, childData.recursive to headerName
+			childData.recursive = _.chain(childData.recursive)
 				.keys()
 				.map(function (v) {
 					return headerNames[v];
 				})
-				.object(_.values(childData.starred))
+				.object(_.values(childData.recursive))
 				.value();
 
 			// output rows
-			_.each(root, function (node, k) {
+			_.each(root, function (node, key) {
 				// make a new row
 				out[outNewIndex] = {};
 
 				// evaluate each col which can be executed i.e. no-star
 				_.each(childData.exec, function(p,k) {
-					out[outNewIndex][headerNames[k]] = jsonPath(node, p)[0];
+					out[outNewIndex][headerNames[k]] = (p === '$' ? node : jsonPath(node, p)[0]);
 				});
 
-				// evaluate cols which require recursion i.e. starred
-				if(!_.isEmpty(childData.starred)) {
+				// evaluate cols which require recursion i.e. recursive
+				if(!_.isEmpty(childData.recursive)) {
 					var origRow = _.clone(out[outNewIndex--]);
-					_.each(this._fixedHeaders(node, childData.starred), function (r) {
+					_.each(this._fixedHeaders(node, childData.recursive), function (r) {
 						//merge each child row with the original row and add to list
 						out[++outNewIndex] = _.chain(origRow)
 											.clone()
@@ -676,10 +578,8 @@
 					'cols': null,
 					'cols-to-ignore': null
 				}, headers),
-				rootPath,
 				headerPaths,
 				headerNames,
-				headerCount,
 				root,
 				result;
 
@@ -695,12 +595,20 @@
 				return StructureAnalyzer.jpNormalize(v).split(';');
 			});
 
+			this._options.header_names = headerNames;
+
 			root = this._fixedHeaders(this._parsed, _.object(headerNames, headerPaths));
 
 			this._options.analyze = true;
-			result = this._htmlTableRender(root, '$');
 
-			return result;
+			// this._parsed = root;
+			// result = this._htmlTableRender(root, '$');
+
+			return root;
+		},
+		_csvRender: function (root) {
+			var headers = this._options.header_names;
+			return toCsv(root, headers);
 		},
 		_htmlTableRender: function (root, path, key, is_ds, headers) {
 			var	out = [],
@@ -754,9 +662,16 @@
 							}
 						}, this);
 						// render the header as a ds
-						out.push(this._templates.htmlTable.headers_vert(
-							{headers:_.union(['key'],child_headers)}
-						));
+						out.push(this._templates.htmlTable.headers_vert({
+							headers:  _.map(child_headers, function (value) {
+								return {
+									info: value,
+									path: renderData.path + '[*][' +
+										(typeof value !== 'number'? "'" + value + "'" : value)
+										+ ']'
+								};
+							})
+						}));
 					}
 				}
 
@@ -771,7 +686,7 @@
 				if(child_is_ds == 1) {
 					if((is_ary && headers.length !== root.length)) {
 						child_is_ds = 0;
-						console.log("Force child no DS", "ARRAY", root, headers);
+						// console.log("Force child no DS", "ARRAY", root, headers);
 					} else if(!is_ary) {
 						var keys = _.keys(root),
 							intersection = _.intersection(keys, headers);
@@ -779,7 +694,7 @@
 						if(intersection.length !== headers.length) {
 							child_is_ds = 0;
 							is_ds = 0;
-							console.log("Force child no DS", "OBJ", root, headers);
+							// console.log("Force child no DS", "OBJ", root, headers);
 						}
 					}
 				}
@@ -941,6 +856,13 @@
 			}
 			// console.log(out);
 			return out;
+		},
+		getModule: function (name) {
+			if(name === 'StructureIndexer') {
+				return StructureIndexer;
+			} else if(name === 'StructureAnalyzer') {
+				return StructureAnalyzer;
+			}
 		}
 
 	};
