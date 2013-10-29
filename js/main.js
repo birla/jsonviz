@@ -368,7 +368,7 @@ $(document).ready(function() {
 		onError: function(){ 
 			alert('There was an error in downloading the file!'); 
 		},
-		swf: '../lib/media/downloadify.swf',
+		swf: 'js/jsonviz/lib/media/downloadify.swf',
 		downloadImage: 'img/download.png',
 		width: 100,
 		height: 30,
