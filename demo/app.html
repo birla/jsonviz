@@ -86,8 +86,8 @@
                 <label for="output_btn">Output</label>
                 <div id="output_btn" class="btn-group" data-toggle="buttons-radio">
                   <button type="button" title="Can only be viewed" id='output_html_btn' class="btn btn-primary active" data-set='html'>HTML</button>
-                  <button type="button" title="Can only be downloaded" id='output_csv_btn' class="btn btn-primary disabled " data-set='csv'>CSV</button>
-                  <button type="button" title="Can be viewed & downloaded" class="btn btn-primary " data-set='json'>JSON</button>
+                  <button type="button" id='output_csv_btn' class="btn btn-primary disabled " data-set='csv'>CSV</button>
+                  <button type="button" class="btn btn-primary " data-set='json'>JSON</button>
                 </div>
               </p>
 							<br/>
@@ -8310,12 +8310,12 @@
 			<hr>
 
 			<footer>
-				<!-- <p>&copy; Something official here</p> -->
+        <p>Developed by <a href="http://prakhar.bir.la/">Prakhar Birla</a>, 2013. Available <a href="https://github.com/birla/jsonviz">open source</a> under the BSD3 License.</p>
 			</footer>
 
 		</div> <!-- /container -->
 
-    <!-- <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.js"></script> -->
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.js"></script>
 		<script>window.jQuery || document.write('<script src="js/vendor/jquery-1.9.1.js"><\/script>')</script>
 
 		<script src="js/vendor/bootstrap.min.js"></script>
@@ -8342,6 +8342,7 @@
     <script src="../lib/underscore.js"></script>
     <script src="../lib/jsonpath.js"></script>
     <script src="../lib/json2.js"></script>
+    <script src="../lib/tocsv.js"></script>
     <script src="../lib/downloadify.min.js"></script>
     <script src="../src/jsonviz.js"></script>
 

@@ -455,7 +455,7 @@
 					result = JSON.stringify(root, null, '    ');
 					break;
 				case 'csv':
-					result = this._csvRender(root);
+					result = this._csvRender(root, _.keys(headers.cols));
 					break;
 				default:
 				case 'simpleText':
@@ -595,6 +595,8 @@
 				return StructureAnalyzer.jpNormalize(v).split(';');
 			});
 
+			this._options.header_names = headerNames;
+
 			root = this._fixedHeaders(this._parsed, _.object(headerNames, headerPaths));
 
 			this._options.analyze = true;
@@ -603,6 +605,10 @@
 			// result = this._htmlTableRender(root, '$');
 
 			return root;
+		},
+		_csvRender: function (root) {
+			var headers = this._options.header_names;
+			return toCsv(root, headers);
 		},
 		_htmlTableRender: function (root, path, key, is_ds, headers) {
 			var	out = [],

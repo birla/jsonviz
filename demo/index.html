@@ -64,7 +64,7 @@
 			<div class="hero-unit">
 			  <h1>JSONViz</h1>
 			  <p>This tool will help you in visualizing & converting JSON data in a HTML table, a CSV file or a new JSON structure. You can download and save the result on your local machine for offline viewing.</p>
-			  <p><a href="app.html" class="btn btn-primary btn-large">Start now &raquo;</a></p>
+			  <p><a href="app.html" class="btn btn-primary btn-large">Start JSONViz now &raquo;</a></p>
 			</div>
 
 <!-- 			<div class="row-fluid">
@@ -91,105 +91,19 @@
 					<h2>Download as CSV</h2>
 					<p>The result can be downloaded in the form of a CSV.</p>
 				</div>
-				<div class="span4">
-					<h2>Download as CSV</h2>
-					<p>The result can be downloaded in the form of a CSV.</p>
-				</div>
-			</div>
-			<div class="row-fluid">
-				<div class="span3">
-
-				</div>
-				<div class="span9">
-
-
-					<!-- <span class="row-fluid span12" id="row_out">
-						<textarea id="viz_out" rows="20" columns="50" class="span12"></textarea>
-					</span> -->
-					<table class="table table-hover">
-						<thead>
-							<tr>
-							<th>#</th>
-							<th>First Name</th>
-							<th>Last Name</th>
-							<th>Username</th>
-							</tr>
-						</thead>
-						<tbody>
-							<tr>
-							<td>1</td>
-							<td>Mark</td>
-							<td>Otto</td>
-							<td>@mdo</td>
-							</tr>
-							<tr>
-							<td>2</td>
-							<td>Jacob</td>
-							<td>Thornton</td>
-							<td>@fat</td>
-							</tr>
-							<tr>
-							<td>3</td>
-							<td colspan="2">Larry the Bird</td>
-							<td>@twitter</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
 			</div>
 			<hr>
 
 			<footer>
-				<!-- <p>&copy; Something official here</p> -->
+				<p>Developed by <a href="http://prakhar.bir.la/">Prakhar Birla</a>, 2013. Available <a href="https://github.com/birla/jsonviz">open source</a> under the BSD3 License.</p>
 			</footer>
 
 		</div> <!-- /container -->
 
-		<!-- <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.js"></script> -->
+		<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.js"></script>
 		<script>window.jQuery || document.write('<script src="js/vendor/jquery-1.9.1.js"><\/script>')</script>
 
 		<script src="js/vendor/bootstrap.min.js"></script>
-
-		<script src="js/plugins.js"></script>
-		<script src="js/main.js"></script>
-
-		<script src="../lib/underscore.js"></script>
-		<script src="../lib/jsonpath.js"></script>
-		<script src="../lib/json2.js"></script>
-		<script src="../lib/downloadify.min.js"></script>
-		<script src="../src/jsonviz.js"></script>
-
-		<script type="text/javascript">
-			JSONViz.setOptions({
-				showPath: false,
-				renderType: 'htmlTable',
-				headers: 'auto'
-			});
-
-			/*Downloadify.create('down_btn',{
-				filename: function(){
-					return "JSONViz.html";
-				},
-				data: function(){ 
-					return JSONViz._renderOutput;
-				},
-				onComplete: function(){ 
-					alert('Your File Has Been Saved!'); 
-				},
-				onCancel: function(){ 
-					alert('You have cancelled the saving of this file.');
-				},
-				onError: function(){ 
-					alert('You must put something in the File Contents or there will be nothing to save!'); 
-				},
-				swf: '../lib/media/downloadify.swf',
-				downloadImage: 'img/download.png',
-				width: 100,
-				height: 30,
-				transparent: true,
-				append: false
-			});*/
-		</script>
 
 		<script>
 			// var _gaq=[['_setAccount','UA-XXXXX-X'],['_trackPageview']];

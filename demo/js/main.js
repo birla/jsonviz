@@ -4,22 +4,32 @@
 // 	placement: 'right'
 // });
 
-var downloadButton;
-var jvHeaderType;
-var headerHtmlTemplates;
-var clickSelectedColour = '#c6e34b';
-var clickSelectedHeaders = [];
-var outputType = 'html';
-var outputMapping = {
-	'html' : 'htmlTable',
-	'json' : 'jsonString',
-	'jsonpath' : 'jsonPath',
-	'csv' : 'csv',
-	'text' : 'simpleText'
-};
 
 $(document).ready(function() {
+	var downloadButton;
+	var jvHeaderType;
+	var headerHtmlTemplates;
+	var clickSelectedColour = '#c6e34b';
+	var clickSelectedHeaders = [];
+	var outputType = 'html';
+	var outputMapping = {
+		'html' : {'file_name':'jsonviz.html', 'param': 'htmlTable'},
+		'json' : {'file_name':'jsonviz.json', 'param': 'jsonString'},
+		'jsonpath' : {'file_name':'jsonviz.html', 'param': 'jsonPath'},
+		'csv' : {'file_name':'jsonviz.csv', 'param': 'csv'},
+		'text' : {'file_name':'jsonviz.txt', 'param': 'simpleText'}
+	};
+	var localStorageCheck;
+	var sampleData = {
+		1: 'abs'
+	};
+
+	localStorageCheck = (localStorage && true);
+
 	$('#headers_btn').click(function() {
+		if(localStorageCheck) {
+			localStorage.removeItem('last_result');
+		}
 		setTimeout( function() {
 			var found = false;
 			$('#headers_btn button').each(function(i, b) {
@@ -57,6 +67,9 @@ $(document).ready(function() {
 	$('#output_btn button').tooltip({placement:'bottom'});
 
 	$('#output_btn').click(function() {
+		if(localStorageCheck) {
+			localStorage.removeItem('last_result');
+		}
 		setTimeout( function() {
 			var found = false;
 			$('#output_btn button').each(function(i, b) {
@@ -102,6 +115,9 @@ $(document).ready(function() {
 
 	$('#header_display_toggle_btn').click(function headerDisplayToggleHandler (event) {
 		var json_headers = getHeadersFromForm();
+		if(localStorageCheck) {
+			localStorage.removeItem('last_result');
+		}
 		setTimeout(function () {
 			var target = $('#header_display_toggle_btn');
 			var container = $('#headers_container');
@@ -126,6 +142,18 @@ $(document).ready(function() {
 						path: "$"
 					})));
 				}
+				/*container.find('icon-plus-sign').click(function (event) {
+					rows_container.append($(headerHtmlTemplates.column_row({
+						path: "$"
+					})));
+					container.find('icon-remove-sign').last().click(removeHandler);
+				});
+
+				function removeHandler (event) {
+					console.log(event.target, $(event.target).parent(1));
+				}
+				container.find('icon-remove-sign').click(removeHandler);
+				controls.log(container.find('icon-remove-sign'));*/
 			}
 		},0);
 	}).click();
@@ -168,12 +196,12 @@ $(document).ready(function() {
 	// });
 
 	$('#undo_btn').click(function undoButtonHandler () {
-		var localStorageCheck = (localStorage && true);
 		var value;
 		if(!localStorageCheck) {
 			alert('Sorry, this functionality is not compatible with your browser!');
 			return;
 		}
+		localStorage.removeItem('last_result');
 		value = localStorage.getItem('input_as_array_undo');
 		if(_.isEmpty(value)) {
 			alert('Sorry, historical information is not available.')
@@ -190,7 +218,6 @@ $(document).ready(function() {
 		setTimeout(function () {
 			var input = $('#raw_json').val();
 			var input_as_array_toggle_btn = $('#input_as_array_toggle_btn');
-			var localStorageCheck = (localStorage && true);
 			var result;
 			var headers;
 			var headers_final;
@@ -235,7 +262,13 @@ $(document).ready(function() {
 				});
 			}
 
-			result = JSONViz.render('$', outputMapping[outputType], headers_final);
+			try {
+				result = JSONViz.render('$', outputMapping[outputType]['param'], headers_final);
+			} catch (e) {
+				alert("Faced error while trying to render. See console for details.\nFix it to continue.");
+				modalScreen.hide();
+				throw e;
+			}
 
 			if(localStorageCheck) {
 				localStorage.setItem('last_result', result);
@@ -270,19 +303,23 @@ $(document).ready(function() {
 
 	downloadButton = $('#down_btn').downloadify({
 		filename: function(){
-			return "JSONViz.html";
+			return outputMapping[outputType]['file_name'];
 		},
-		data: function(){ 
-			return JSONViz._renderOutput;
+		data: function(){
+			if(localStorageCheck && localStorage.getItem('last_result')) {
+				return localStorage.getItem('last_result');
+			}
+			alert('Unable to get data to download. Please click on the Visualize button again.')
+			return;
 		},
 		onComplete: function(){ 
-			alert('Your File Has Been Saved!'); 
+			alert('The file has been saved!'); 
 		},
 		onCancel: function(){ 
-			alert('You have cancelled the saving of this file.');
+			alert('You have cancelled the saving of the file.');
 		},
 		onError: function(){ 
-			alert('You must put something in the File Contents or there will be nothing to save!'); 
+			alert('There was an error in downloading the file!'); 
 		},
 		swf: '../lib/media/downloadify.swf',
 		downloadImage: 'img/download.png',
@@ -291,4 +328,6 @@ $(document).ready(function() {
 		transparent: true,
 		append: false
 	});
+
+
 });
